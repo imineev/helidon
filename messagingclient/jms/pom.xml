@@ -27,7 +27,10 @@
 
     <artifactId>helidon-messagingclient-jms</artifactId>
     <name>Helidon MessagingClient JMS</name>
-    <description>Helidon Messaging implementation for JMS</description>
+
+    <description>
+        Integration with JMS
+    </description>
 
     <dependencies>
         <dependency>
@@ -41,19 +44,20 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.helidon.common</groupId>
-            <artifactId>helidon-common-configurable</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.glassfish</groupId>
+            <artifactId>javax.json</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>javax.jms</groupId>
+            <artifactId>javax.jms-api</artifactId>
+            <version>2.0</version>
         </dependency>
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>hamcrest-all</artifactId>
-            <scope>test</scope>
+            <groupId>javax.transaction</groupId>
+            <artifactId>javax.transaction-api</artifactId>
+            <version>1.2</version>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
 </project>

@@ -35,7 +35,7 @@
     <modules>
         <module>messagingclient</module>
         <module>common</module>
-        <!--<module>jms</module>-->
+        <module>jms</module>
         <module>kafka</module>
         <module>tracing</module>
         <module>metrics</module>

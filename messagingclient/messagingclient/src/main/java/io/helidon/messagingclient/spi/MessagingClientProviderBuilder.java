@@ -97,4 +97,8 @@ public interface MessagingClientProviderBuilder<T extends MessagingClientProvide
      */
     @Override
     MessagingClient build();
+
+    void topic(String s);
+
+    void queue(String s);
 }

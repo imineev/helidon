@@ -4,11 +4,9 @@ import io.helidon.messagingclient.Message;
 
 public class KafkaMessage implements Message {
     private String messageString;
-    private Object session;
 
-    public KafkaMessage(String messageString, Object session) {
+    public KafkaMessage(String messageStringn) {
         this.messageString = messageString;
-        this.session = session;
     }
 
     @Override
@@ -16,8 +14,4 @@ public class KafkaMessage implements Message {
         return messageString;
     }
 
-    @Override
-    public Object getSession() {
-        return session;
-    }
 }

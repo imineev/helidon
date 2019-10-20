@@ -1,24 +1,23 @@
-package io.helidon.messagingclient.kafka;
+package io.helidon.messagingclient.jms;
 
-class KafkaMessagingClientConfig {
+public class JMSMessagingClientConfig {
 
     private final String url;
     private final String username;
     private final String password;
     private final String topic;
     private final String queue;
-    private final String bootstrapservers;
+    private final String messagetype;
     private final int numberofmessagestoconsume;
 
-    //todo basically everything from consumer.properties and producer.properties and file location for same
-    KafkaMessagingClientConfig(String url, String username, String password, String topic, String queue,
-                               String bootstrapservers, int numberofmessagestoconsume) {
+    JMSMessagingClientConfig(String url, String username, String password, String topic, String queue,
+                               String messagetype, int numberofmessagestoconsume) {
         this.url = url;
         this.username = username;
         this.password = password;
         this.topic = topic;
         this.queue = queue;
-        this.bootstrapservers = bootstrapservers;
+        this.messagetype = messagetype;
         this.numberofmessagestoconsume = numberofmessagestoconsume;
     }
 
@@ -38,7 +37,7 @@ class KafkaMessagingClientConfig {
 
     String queue() { return queue;  }
 
-    String bootstrapservers() { return bootstrapservers;  }
+    String messagetype() { return messagetype;  }
 
     int numberofmessagestoconsume() { return numberofmessagestoconsume;  }
 

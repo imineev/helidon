@@ -59,14 +59,13 @@ public interface MessagingClient {
     }
 
     /**
-     * Listen for messages.
+     * operation for messages.
      *
-     * @param <T>      listenForMessages result type
-     * @param executor messaging operation executor, see {@link MessagingListenForMessages}
-     * @return listenForMessages result
+     * @param <T>      operation result type
+     * @param executor messaging operation executor, see {@link MessagingOperationOptions}
+     * @return operation result
      */
-    <T> T listenForMessages(Function<MessagingListenForMessages, T> executor);
-
+    <T> T operation(Function<MessagingOperationOptions, T> executor);
 
     /**
      * Create Helidon messaging handler builder.
@@ -131,8 +130,6 @@ public interface MessagingClient {
                 .orElseGet(MessagingClient::builder)
                 .config(messagingConfig);
     }
-
-    void sendMessages(Object o);
 
     /**
      * Helidon messaging handler builder.

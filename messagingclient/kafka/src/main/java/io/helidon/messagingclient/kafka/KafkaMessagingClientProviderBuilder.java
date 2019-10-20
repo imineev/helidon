@@ -18,6 +18,10 @@ public class KafkaMessagingClientProviderBuilder implements MessagingClientProvi
     private String url;
     private String username;
     private String password;
+    private String topic;
+    private String queue;
+    private String bootstrapservers;
+    private int numberofmessagestoconsume;
     KafkaMessagingClientConfig config;
     private Supplier<ExecutorService> executorService;
     private MessagingOperations operations;
@@ -27,7 +31,8 @@ public class KafkaMessagingClientProviderBuilder implements MessagingClientProvi
     }
 
     public KafkaMessagingClientConfig messagingConfig() {
-        return config = new KafkaMessagingClientConfig(url, username, password, "cred");
+        return config = new KafkaMessagingClientConfig(
+                url, username, password, topic, queue, bootstrapservers, numberofmessagestoconsume);
     }
 
     ExecutorService executorService() {
@@ -79,6 +84,16 @@ public class KafkaMessagingClientProviderBuilder implements MessagingClientProvi
         return new KafkaMessagingClient(this);
     }
 
+    @Override
+    public void topic(String s) {
+        topic = s;
+    }
+
+    @Override
+    public void queue(String s) {
+        queue = s;
+    }
+
     public KafkaMessagingClientProviderBuilder executorService(Supplier<ExecutorService> executorServiceSupplier) {
         this.executorService = executorServiceSupplier;
         return this;
@@ -89,9 +104,22 @@ public class KafkaMessagingClientProviderBuilder implements MessagingClientProvi
         config.get("url").asString().ifPresent(this::url);
         config.get("username").asString().ifPresent(this::username);
         config.get("password").asString().ifPresent(this::password);
+        config.get("topic").asString().ifPresent(this::topic);
+        config.get("queue").asString().ifPresent(this::queue);
+        config.get("bootstrap.servers").asString().ifPresent(this::bootstrapservers);
+        config.get("numberofmessagestoconsume").asInt().ifPresent(this::numberofmessagestoconsume);
         config.get("operations").as(MessagingOperations::create).ifPresent(this::operations);
         config.get("executor-service").as(ThreadPoolSupplier::create).ifPresent(this::executorService);
+        // todo set the connpool here at least for jdbc
         return this;
+    }
+
+    private void bootstrapservers(String s) {
+        bootstrapservers = s;
+    }
+
+    private void numberofmessagestoconsume(int s) {
+        numberofmessagestoconsume = s;
     }
 
     MessagingOperations operations() {

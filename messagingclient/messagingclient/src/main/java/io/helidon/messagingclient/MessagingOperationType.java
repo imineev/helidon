@@ -7,7 +7,7 @@ public enum MessagingOperationType {
     MESSAGING("m"),
     /**
      * The operation type is not yet knows (e.g. when invoking
-     * {@link MessagingListenForMessages#createNamedFilter(String)}
+     * {@link MessagingOperationOptions#filterForEndpoint(String)}
      */
     UNKNOWN("x");
 
