@@ -18,9 +18,16 @@ server:
   port: 8080
   host: 0.0.0.0
 
-# docker run kafka
-messaging:
+messaging-kafka-demo:
   source: "kafka"
-  url: "kafka://127.0.0.1:27017/pokemon"
-  username: "kafkausername"
-  password: "kafkapassword"
+  url: "demourl"
+  username: "demousername"
+  password: "demopassword"
+  bootstrap.servers: "localhost:9092"
+  topic: "demotopic"
+  queue: ""
+  config.numberofmessagestoconsume: -1
+  operations: #todo whicessagingClientConfigh option/format below to use?
+    listenForMessagesWithPattern: "pattern regex..."
+    subscribe: "pattern regex..."
+    produce: "pattern regex..." # or sendMessagesWith...

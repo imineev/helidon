@@ -21,8 +21,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import io.helidon.common.http.Http;
-import io.helidon.messagingclient.Message;
-import io.helidon.messagingclient.MessagingClient;
+import io.helidon.messagingclient.*;
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
@@ -32,64 +31,80 @@ import io.helidon.webserver.Service;
 
 public class PokemonService implements Service {
 
-    /**
-     * Local logger instance.
-     */
     private static final Logger LOGGER = Logger.getLogger(PokemonService.class.getName());
 
     private final MessagingClient messagingClient;
 
-    PokemonService(MessagingClient dbClient) {
-        this.messagingClient = dbClient;
-    }
-
-    private void log(String message) {
-        System.out.println("PokemonService.log message:" + message);
+    PokemonService(MessagingClient messagingClient) {
+        this.messagingClient = messagingClient;
     }
 
     @Override
     public void update(Routing.Rules rules) {
-        log("update");
         rules.get("/", this::listenForMessagesGET)
                 .post("/", Handler.create(Pokemon.class, this::listenForMessages))
                 .get("/{name}", this::sendMessages);
     }
 
-
     private void listenForMessagesGET(ServerRequest request, ServerResponse response) {
-        log("listenForMessagesGET");
+        System.out.println("listenForMessagesGET");
         listenForMessages(request, response, null);
-
     }
 
+    //
     private void listenForMessages(ServerRequest request, ServerResponse response, Pokemon pokemon) {
-        log("listenForMessages");
-        messagingClient.listenForMessages(exec -> exec
-                .createNamedFilter("kafkasubscribewithpattern")  //  subscribe(java.util.regex.Pattern
-//  if pokemon is !null ...              .namedParam(pokemon)
-                .execute())
-                .thenAccept(messageReceived -> processMessage(response, messageReceived))
+        System.out.println("listenForMessages");
+        messagingClient.operation(exec -> exec
+                .filterForEndpoint("kafkasubscribewithpattern")//todo get from config/pokemon subscribe(java.util.regex.Pattern
+                .incoming(new TestMessageProcessorIncoming()))
+                .thenAccept(messageReceived -> postProcessMessage(response, messageReceived))
                 .exceptionally(throwable -> sendError(throwable, response));
     }
 
+    class TestMessageProcessorIncoming implements MessageProcessor {
+        @Override
+        public Object processMessage(Message message) {
+            return processMessage(null, message);
+        }
 
-    private void processMessage(ServerResponse response, Message messageReceived) {
+        @Override
+        public Object processMessage(Session session, Message message) {
+            System.out.println("TestMessageProcessor.processMessage session:" + session + " message:" + message);
+            //todo insert db row, etc.
+            return message + "sent";
+        }
+    }
+
+    private void postProcessMessage(ServerResponse response, Message messageReceived) {
         System.out.println("PokemonService.processMessage messageReceived.getString():" + messageReceived.getString());
         response.send("received message: " + messageReceived.getString());
     }
 
     private void sendMessages(ServerRequest request, ServerResponse response) {
-        log("getP sendMessages/send message via producer");
+        System.out.println("sendMessages/send message via producer");
         String message = "test messaging";
-        messagingClient.sendMessages(message);
+        messagingClient.operation(exec -> exec
+                .filterForEndpoint("kafkasubscribewithpattern")//todo get from config/pokemon subscribe(java.util.regex.Pattern
+                .outgoing(new TestMessageProcessorOutgoing()))
+                .thenAccept(messageReceived -> postProcessMessage(response, messageReceived))
+                .exceptionally(throwable -> sendError(throwable, response));
         response.send(" message sent:" + message);
     }
 
+    class TestMessageProcessorOutgoing implements MessageProcessor {
+        @Override
+        public Object processMessage(Message message) {
+            return processMessage(null, message);
+        }
 
-    private void sendNotFound(ServerResponse response, String message) {
-        response.status(Http.Status.NOT_FOUND_404);
-        response.send(message);
+        @Override
+        public Object processMessage(Session session, Message message) {
+            System.out.println("TestMessageProcessor.processMessage session:" + session + " message:" + message);
+            //todo insert db row, etc.
+            return message + "sent";
+        }
     }
+
 
 
     private Void sendError(final Throwable throwable, ServerResponse response) {

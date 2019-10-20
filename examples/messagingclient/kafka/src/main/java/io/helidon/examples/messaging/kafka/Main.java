@@ -35,77 +35,42 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerConfiguration;
 import io.helidon.webserver.WebServer;
 
-/**
- * Simple Hello World rest application.
- */
+
 public final class Main {
 
-    /**
-     * Cannot be instantiated.
-     */
     private Main() {
     }
 
-    /**
-     * Application main entry point.
-     *
-     * @param args command line arguments.
-     * @throws java.io.IOException if there are problems reading logging properties
-     */
     public static void main(final String[] args) throws IOException {
         startServer();
     }
 
-    /**
-     * Start the server.
-     *
-     * @return the created {@link io.helidon.webserver.WebServer} instance
-     * @throws java.io.IOException if there are problems reading logging properties
-     */
     static WebServer startServer() throws IOException {
-
-        // load logging configuration
         LogManager.getLogManager().readConfiguration(
                 Main.class.getResourceAsStream("/logging.properties"));
-
-        // By default this will pick up application.yaml from the classpath
         Config config = Config.create();
-
-        // Get webserver config from the "server" section of application.yaml
         ServerConfiguration serverConfig =
                 ServerConfiguration.builder(config.get("server"))
                         .tracer(TracerBuilder.create("messaging-poc").buildAndRegister())
                         .build();
-
         WebServer server = WebServer.create(serverConfig, createRouting(config));
-
-        // Start the server and print some info.
         server.start().thenAccept(ws -> {
             System.out.println(
                     "WEB server is up! http://localhost:" + ws.port() + "/");
         });
-
-        // Server threads are not daemon. NO need to block. Just react.
         server.whenShutdown().thenRun(() -> System.out.println("WEB server is DOWN. Good bye!"));
-
         return server;
     }
 
-    /**
-     * Creates new {@link io.helidon.webserver.Routing}.
-     *
-     * @param config configuration of this server
-     * @return routing configured with JSON support, a health check, and a service
-     */
-    private static Routing createRouting(Config config) {
-        Config dbConfig = config.get("messaging");
-        Config dbsourceConfig = config.get("source");
-        System.out.println("Main.createRouting dbsourceConfig=" + dbsourceConfig.name());
-        System.out.println("Main.createRouting dbsourceConfig hasValue=" + dbsourceConfig.hasValue());
 
-        MessagingClient messagingClient = MessagingClient.builder(dbConfig)
-                // add an interceptor to named operation(s)
-                .addInterceptor(MessagingCounter.create(), "subscribe-with-orderpattern", "send-with-order-props", "filter-orders")
+    private static Routing createRouting(Config config) {
+        Config messagingConfig = config.get("messaging-kafka-demo");
+        System.out.println("Main.createRouting messagingsourceConfig=" + config.get("source").name());
+
+        MessagingClient messagingClient = MessagingClient.builder(messagingConfig)
+                // add an interceptor to named/filters of operation(s)
+                .addInterceptor(MessagingCounter.create(),  //todo would be from config
+                        "subscribe-with-orderpattern", "send-with-order-props", "filter-orders")
                 // add an interceptor to operation type(s)
                 .addInterceptor(MessagingTimer.create(), MessagingOperationType.MESSAGING, MessagingOperationType.UNKNOWN)
                 // add an interceptor to all operations
