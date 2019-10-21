@@ -85,7 +85,7 @@ The following Yaml file configures JMS factory to AQ:
 kafka-messaging:
     source: aq
     url: jdbc:oracle:thin:@//129.146.63.193:1521/testpdb.auranet0.vcndns.oraclevcn.com
-    username: aquser1
+    username: aq######
     password: AQ############
     listeners:
       demoqueue: "demoqueue"

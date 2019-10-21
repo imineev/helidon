@@ -16,8 +16,8 @@
   -->
 
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>helidon-examples-messaging-project</artifactId>
         <groupId>io.helidon.examples.messagingclient</groupId>
@@ -27,36 +27,60 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>helidon-examples-messagingclient-jms</artifactId>
-    <name>Helidon Examples Messaging Client JMS</name>
+    <artifactId>helidon-examples-messaging-jms</artifactId>
+    <name>Helidon Examples Messaging JMS</name>
+
+    <properties>
+        <dependenciesDirectory>libs</dependenciesDirectory>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/${dependenciesDirectory}</outputDirectory>
+                            <overWriteReleases>false</overWriteReleases>
+                            <overWriteSnapshots>false</overWriteSnapshots>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                            <includeScope>runtime</includeScope>
+                            <excludeScope>test</excludeScope>
+                            <useBaseVersion>false</useBaseVersion>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>${dependenciesDirectory}</classpathPrefix>
+                            <mainClass>io.helidon.examples.messaging.jms.Main</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
     <dependencies>
         <dependency>
             <groupId>io.helidon.messagingclient</groupId>
             <artifactId>helidon-messagingclient-jms</artifactId>
             <version>1.0.4-SNAPSHOT</version>
+            <scope>runtime</scope>
             <!--<version>${project.version}</version>-->
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.health</groupId>
-            <artifactId>helidon-health</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.metrics</groupId>
-            <artifactId>helidon-metrics</artifactId>
-            <version>1.0.4-SNAPSHOT</version>
-            <!--<version>${project.version}</version>-->
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.tracing</groupId>
-            <artifactId>helidon-tracing</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.tracing</groupId>
-            <artifactId>helidon-tracing-zipkin</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.helidon.messagingclient</groupId>
@@ -83,6 +107,27 @@
             <!--<version>${project.version}</version>-->
         </dependency>
         <dependency>
+            <groupId>io.helidon.health</groupId>
+            <artifactId>helidon-health</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.metrics</groupId>
+            <artifactId>helidon-metrics</artifactId>
+            <version>1.0.4-SNAPSHOT</version>
+            <!--<version>${project.version}</version>-->
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.tracing</groupId>
+            <artifactId>helidon-tracing</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.tracing</groupId>
+            <artifactId>helidon-tracing-zipkin</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>io.helidon.bundles</groupId>
             <artifactId>helidon-bundles-webserver</artifactId>
             <version>1.0.4-SNAPSHOT</version>
@@ -104,55 +149,15 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>io.helidon.common</groupId>
+            <artifactId>helidon-common-configurable</artifactId>
+            <version>1.0.4-SNAPSHOT</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
-
-
-        <dependency>
-            <groupId>test</groupId>
-            <artifactId>jdbc</artifactId>
-            <version>18.0.0.0.0</version>
-        </dependency>
-        <!--<dependency>-->
-            <!--<groupId>test</groupId>-->
-            <!--<artifactId>aqapi</artifactId>-->
-            <!--<version>1.0.0</version>-->
-        <!--</dependency>-->
-        <dependency>
-            <groupId>javax.jms</groupId>
-            <artifactId>javax.jms-api</artifactId>
-            <version>2.0</version>
-        </dependency>
-        <dependency> <!-- needed for oracle.jms.AQjmsConnection.createQueueSession -->
-            <groupId>javax.transaction</groupId>
-            <artifactId>javax.transaction-api</artifactId>
-            <version>1.2</version>
-        </dependency>
     </dependencies>
-<build>
-    <plugins>
-        <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <version>1.1.1</version>
-            <executions>
-                <execution>
-                    <phase>test</phase>
-                    <goals>
-                        <goal>java</goal>
-                    </goals>
-                    <configuration>
-                        <mainClass>io.helidon.examples.messaging.jmessagingc.MainAQ</mainClass>
-                        <!--<arguments>-->
-                            <!--<argument>arg0</argument>-->
-                            <!--<argument>arg1</argument>-->
-                        <!--</arguments>-->
-                    </configuration>
-                </execution>
-            </executions>
-        </plugin>
-    </plugins>
-</build>
 </project>

@@ -15,7 +15,7 @@ import java.util.logging.Logger;
 
 public class JMSMessagingOperation implements MessagingOperation {
     private final ExecutorService executorService;
-    private final QueueConnectionFactory queueConnectionFactory;
+    private final ConnectionPool connectionPool;
     private final JMSMessagingClientConfig config;
     private final InterceptorSupport interceptors;
     private final String messagingType = "JMS";
@@ -25,11 +25,11 @@ public class JMSMessagingOperation implements MessagingOperation {
     private static final Logger LOGGER = Logger.getLogger(JMSMessagingOperation.class.getName());
 //
     public JMSMessagingOperation(ExecutorService executorService, InterceptorSupport interceptors,
-                                 QueueConnectionFactory queueConnectionFactory, JMSMessagingClientConfig config) {
+                                 ConnectionPool connectionPool, JMSMessagingClientConfig config) {
         this.executorService = executorService;
         this.interceptors = interceptors;
         this.config = config;
-        this.queueConnectionFactory = queueConnectionFactory;
+        this.connectionPool = connectionPool;
     }
 
 
@@ -59,19 +59,19 @@ public class JMSMessagingOperation implements MessagingOperation {
             executorService.submit(() -> {
                 operationFuture.complete(null);
                 queryFuture.complete(
-                        new JMSMessage(dolistenForMessages(config.queue(), config.messagetype())));
+                        new JMSMessage(receiveMessages(config.queue(), config.messagetype())));
             });
             return queryFuture;
         });
     }
 
-    public Object dolistenForMessages(String queueName, String messageType) {
+    public Object receiveMessages(String queueName, String messageType) {
         QueueConnection connection = null;
         javax.jms.Queue queue;
         QueueSession session =null;
         javax.jms.Message msg;
         try {
-            connection = queueConnectionFactory.createQueueConnection();
+            connection = connectionPool.connection();
             session = connection.createQueueSession(true, Session.CLIENT_ACKNOWLEDGE);
             queue = session.createQueue(queueName);
             MessageConsumer consumer = session.createReceiver(queue);
@@ -155,19 +155,19 @@ public class JMSMessagingOperation implements MessagingOperation {
             executorService.submit(() -> {
                 operationFuture.complete(null);
                 queryFuture.complete(
-                        new JMSMessage(updateDataAndSendEvent(config.queue(), config.messagetype())));
+                        new JMSMessage(sendMessage(config.queue(), config.messagetype())));
             });
             return queryFuture;
         });
     }
 
-    public String updateDataAndSendEvent(String queueName, String messageType)  {
+    public String sendMessage(String queueName, String messageType)  {
         QueueConnection connection = null;
         javax.jms.Queue queue;
         QueueSession session =null;
         javax.jms.Message msg;
         try {
-            connection = queueConnectionFactory.createQueueConnection();
+            connection = connectionPool.connection();
             session = connection.createQueueSession(true, Session.CLIENT_ACKNOWLEDGE);
             queue = session.createQueue(queueName);
             String messageTxt = "test message";
