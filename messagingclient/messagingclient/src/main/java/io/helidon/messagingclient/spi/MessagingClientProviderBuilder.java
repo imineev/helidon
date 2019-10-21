@@ -21,41 +21,41 @@ import io.helidon.messagingclient.*;
 import io.helidon.messagingclient.MessagingInterceptor;
 
 /**
- * Database provider builder.
+ * messaging provider builder.
  *
  * @param <T> type of the builder extending implementing this interface.
  */
 public interface MessagingClientProviderBuilder<T extends MessagingClientProviderBuilder<T>> extends Builder<MessagingClient> {
 
     /**
-     * Use database connection configuration from configuration file.
+     * Use messaging connection configuration from configuration file.
      *
-     * @param config {@link io.helidon.config.Config} instance with database connection attributes
-     * @return database provider builder
+     * @param config {@link io.helidon.config.Config} instance with messaging connection attributes
+     * @return messaging provider builder
      */
     T config(Config config);
 
     /**
-     * Set database connection string (URL).
+     * Set messaging connection string (URL).
      *
-     * @param url database connection string
-     * @return database provider builder
+     * @param url messaging connection string
+     * @return messaging provider builder
      */
     T url(String url);
 
     /**
-     * Set database connection user name.
+     * Set messaging connection user name.
      *
-     * @param username database connection user name
-     * @return database provider builder
+     * @param username messaging connection user name
+     * @return messaging provider builder
      */
     T username(String username);
 
     /**
-     * Set database connection p¨assword.
+     * Set messaging connection p¨assword.
      *
-     * @param password database connection password
-     * @return database provider builder
+     * @param password messaging connection password
+     * @return messaging provider builder
      */
     T password(String password);
 
@@ -91,9 +91,9 @@ public interface MessagingClientProviderBuilder<T extends MessagingClientProvide
 
 
     /**
-     * Build database handler for specific provider.
+     * Build messaging handler for specific provider.
      *
-     * @return database handler instance
+     * @return messaging handler instance
      */
     @Override
     MessagingClient build();

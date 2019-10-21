@@ -64,7 +64,7 @@ public final class Main {
 
 
     private static Routing createRouting(Config config) {
-        Config messagingConfig = config.get("messaging-kafka-demo");
+        Config messagingConfig = config.get("messaging-jms-demo");
         System.out.println("Main.createRouting messagingsourceConfig=" + config.get("source").name());
 
         MessagingClient messagingClient = MessagingClient.builder(messagingConfig)

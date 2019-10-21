@@ -24,21 +24,21 @@ import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.eclipse.microprofile.health.HealthCheckResponseBuilder;
 
 /**
- * Database health check.
+ * messaging health check.
  */
 public final class MessagingClientHealthCheck implements HealthCheck {
     private final MessagingClient dbClient;
     private final String name;
 
     private MessagingClientHealthCheck(Builder builder) {
-        this.dbClient = builder.database;
+        this.dbClient = builder.messaging;
         this.name = builder.name;
     }
 
     /**
-     * Create a health check for the database.
+     * Create a health check for the messaging.
      *
-     * @param dbClient A database that implements {@link io.helidon.messagingclient.MessagingClient#ping()}
+     * @param dbClient A messaging that implements {@link io.helidon.messagingclient.MessagingClient#ping()}
      * @return health check that can be used with
      * {@link io.helidon.health.HealthSupport.Builder#add(org.eclipse.microprofile.health.HealthCheck...)}
      */
@@ -47,9 +47,9 @@ public final class MessagingClientHealthCheck implements HealthCheck {
     }
 
     /**
-     * A fluent API builder to create a fully customized database health check.
+     * A fluent API builder to create a fully customized messaging health check.
      *
-     * @param dbClient database
+     * @param dbClient messaging
      * @return a new builder
      */
     public static Builder builder(MessagingClient dbClient) {
@@ -91,12 +91,12 @@ public final class MessagingClientHealthCheck implements HealthCheck {
      * Fluent API builder for {@link MessagingClientHealthCheck}.
      */
     public static final class Builder implements io.helidon.common.Builder<MessagingClientHealthCheck> {
-        private final MessagingClient database;
+        private final MessagingClient messaging;
         private String name;
 
-        private Builder(MessagingClient database) {
-            this.database = database;
-            this.name = database.messagingType();
+        private Builder(MessagingClient messaging) {
+            this.messaging = messaging;
+            this.name = messaging.messagingType();
         }
 
         @Override

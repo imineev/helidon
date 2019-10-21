@@ -7,7 +7,7 @@ import java.util.Objects;
 import io.helidon.config.Config;
 
 /**
- * Configuration of operations to be used by database provider.
+ * Configuration of operations to be used by messaging provider.
  */
 @FunctionalInterface
 public interface MessagingOperations {
@@ -15,7 +15,7 @@ public interface MessagingOperations {
      * Get operation text for a named operation.
      *
      * @param name name of the operation
-     * @return text of the operation (such as SQL code for SQL-based database operations)
+     * @return text of the operation (such as SQL code for SQL-based messaging operations)
      * @throws MessagingClientException in case the operation name does not exist
      */
     String operation(String name) throws MessagingClientException;
@@ -49,11 +49,11 @@ public interface MessagingOperations {
         private final Map<String, String> configuredOperations = new HashMap<>();
 
         /**
-         * Add named database operation to database configuration..
+         * Add named messaging operation to messaging configuration..
          *
-         * @param name      database operation name
-         * @param operation database operation {@link String}
-         * @return database provider builder
+         * @param name      messaging operation name
+         * @param operation messaging operation {@link String}
+         * @return messaging provider builder
          */
         public Builder addOperation(String name, String operation) {
             Objects.requireNonNull(name, "Operation name must be provided");

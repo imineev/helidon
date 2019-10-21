@@ -488,6 +488,23 @@
                 <version>${helidon.version}</version>
             </dependency>
 
+            <!-- messaging -->
+            <dependency>
+                <groupId>io.helidon.messagingclient</groupId>
+                <artifactId>helidon-messagingclient</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.messagingclient</groupId>
+                <artifactId>helidon-messagingclient-jms</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.messagingclient</groupId>
+                <artifactId>helidon-messagingclient-kafka</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            
             <!-- tracing -->
             <dependency>
                 <!-- to add tracer builder -->

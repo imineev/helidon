@@ -25,7 +25,7 @@ import io.helidon.common.serviceloader.HelidonServiceLoader;
 import io.helidon.messagingclient.spi.MessagingClientProvider;
 
 /**
- * Loads database client providers from Java Service loader.
+ * Loads messaging client providers from Java Service loader.
  */
 final class MessagingClientProviderLoader {
     private static final Map<String, MessagingClientProvider> Messaging_SOURCES = new HashMap<>();

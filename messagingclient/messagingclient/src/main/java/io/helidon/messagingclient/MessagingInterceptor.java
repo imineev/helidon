@@ -18,7 +18,7 @@ package io.helidon.messagingclient;
 import java.util.concurrent.CompletionStage;
 
 /**
- * Interceptor to handle work around a database operation.
+ * Interceptor to handle work around a messaging operation.
  * Example of such interceptors: tracing, metrics.
  * <p>
  * Interceptors can be defined as global interceptors, interceptors for a type of a operation and interceptors for a named

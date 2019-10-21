@@ -16,7 +16,7 @@
 package io.helidon.messagingclient.spi;
 
 /**
- * Java Service loader interface that provides drivers for a database (or a set of databases).
+ * Java Service loader interface that provides drivers for a messaging (or a set of messagings).
  */
 public interface MessagingClientProvider {
     /**

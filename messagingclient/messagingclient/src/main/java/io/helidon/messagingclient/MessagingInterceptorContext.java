@@ -24,14 +24,14 @@ import io.helidon.common.context.Context;
 import io.helidon.messagingclient.spi.MessagingClientProvider;
 
 /**
- * Interceptor context to get (and possibly manipulate) database operations.
+ * Interceptor context to get (and possibly manipulate) messaging operations.
  * <p>
  * This is a mutable object - acts as a builder during the invocation of {@link MessagingInterceptor}.
  * The interceptors are executed sequentially, so there is no need for synchronization.
  */
 public interface MessagingInterceptorContext {
     /**
-     * Create a new interceptor context for a database provider.
+     * Create a new interceptor context for a messaging provider.
      *
      * @param messagingType a short name of the messaging type (such as jms:AQ)
      * @return a new interceptor context ready to be configured
@@ -41,9 +41,9 @@ public interface MessagingInterceptorContext {
     }
 
     /**
-     * Type of this database (usually the same string used by the {@link MessagingClientProvider#name()}).
+     * Type of this messaging (usually the same string used by the {@link MessagingClientProvider#name()}).
      *
-     * @return type of database
+     * @return type of messaging
      */
     String messagingType();
 

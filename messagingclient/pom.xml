@@ -22,7 +22,7 @@
     <parent>
         <artifactId>helidon-project</artifactId>
         <groupId>io.helidon</groupId>
-        <version>1.0.4-SNAPSHOT</version>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <packaging>pom</packaging>
 
@@ -30,7 +30,7 @@
     <artifactId>helidon-messagingclient-project</artifactId>
     <name>Helidon Messaging Client Project</name>
 
-    <description>Support for reactive database client access.</description>
+    <description>Support for reactive messaging client access.</description>
 
     <modules>
         <module>messagingclient</module>

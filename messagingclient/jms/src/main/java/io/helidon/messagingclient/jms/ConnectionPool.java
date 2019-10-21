@@ -35,10 +35,10 @@ public interface ConnectionPool {
     QueueConnection connection();
 
     /**
-     * The type of this database - if better details than {@value JMSMessagingClientProvider#MESSAGING_TYPE} is
+     * The type of this messaging - if better details than {@value JMSMessagingClientProvider#MESSAGING_TYPE} is
      * available, return it. This could be "jmessagingc:aq" etc.
      *
-     * @return type of this database
+     * @return type of this messaging
      */
     default String messagingType() {
         return JMSMessagingClientProvider.MESSAGING_TYPE;
