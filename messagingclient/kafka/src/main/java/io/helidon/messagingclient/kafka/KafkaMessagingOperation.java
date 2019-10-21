@@ -95,6 +95,7 @@ public class KafkaMessagingOperation implements MessagingOperation {
                     record.value());
             Message message = new KafkaMessage(record.value());
             messageProcessor.processMessage(message);
+            operationFuture.complete(null);
             queryFuture.complete(message);
             offset.acknowledge();
             latch.countDown();
@@ -186,7 +187,11 @@ public class KafkaMessagingOperation implements MessagingOperation {
                 .operationFuture(operationFuture);
         update(messagingContext);
         CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingContext);
-
+        messagingContextFuture.exceptionally(throwable -> {
+            operationFuture.completeExceptionally(throwable);
+            queryFuture.completeExceptionally(throwable);
+            return null;
+        });
         KafkaSender<Integer, String> sender;
         SimpleDateFormat dateFormat;
         int count = 20;
