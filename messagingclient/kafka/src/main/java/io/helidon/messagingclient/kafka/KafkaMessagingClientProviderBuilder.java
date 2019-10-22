@@ -2,10 +2,10 @@ package io.helidon.messagingclient.kafka;
 
 import io.helidon.common.configurable.ThreadPoolSupplier;
 import io.helidon.config.Config;
+import io.helidon.messagingclient.MessagingChannelType;
 import io.helidon.messagingclient.MessagingInterceptor;
 import io.helidon.messagingclient.MessagingClient;
-import io.helidon.messagingclient.MessagingOperationType;
-import io.helidon.messagingclient.MessagingOperations;
+import io.helidon.messagingclient.MessagingChannels;
 import io.helidon.messagingclient.common.InterceptorSupport;
 import io.helidon.messagingclient.spi.MessagingClientProviderBuilder;
 
@@ -24,7 +24,7 @@ public class KafkaMessagingClientProviderBuilder implements MessagingClientProvi
     private int numberofmessagestoconsume;
     KafkaMessagingClientConfig config;
     private Supplier<ExecutorService> executorService;
-    private MessagingOperations operations;
+    private MessagingChannels channels;
 
     public InterceptorSupport interceptors() {
         return interceptors.build();
@@ -65,14 +65,14 @@ public class KafkaMessagingClientProviderBuilder implements MessagingClientProvi
     }
 
     @Override
-    public KafkaMessagingClientProviderBuilder addInterceptor(MessagingInterceptor interceptor, MessagingOperationType... operationNames) {
-        this.interceptors.add(interceptor, operationNames);
+    public KafkaMessagingClientProviderBuilder addInterceptor(MessagingInterceptor interceptor, MessagingChannelType... channelNames) {
+        this.interceptors.add(interceptor, channelNames);
         return this;
     }
 
     @Override
-    public KafkaMessagingClientProviderBuilder addInterceptor(MessagingInterceptor interceptor, String... operationNames) {
-        this.interceptors.add(interceptor, operationNames);
+    public KafkaMessagingClientProviderBuilder addInterceptor(MessagingInterceptor interceptor, String... channelNames) {
+        this.interceptors.add(interceptor, channelNames);
         return this;
     }
 
@@ -108,7 +108,7 @@ public class KafkaMessagingClientProviderBuilder implements MessagingClientProvi
         config.get("queue").asString().ifPresent(this::queue);
         config.get("bootstrap.servers").asString().ifPresent(this::bootstrapservers);
         config.get("numberofmessagestoconsume").asInt().ifPresent(this::numberofmessagestoconsume);
-        config.get("operations").as(MessagingOperations::create).ifPresent(this::operations);
+        config.get("channels").as(MessagingChannels::create).ifPresent(this::channels);
         config.get("executor-service").as(ThreadPoolSupplier::create).ifPresent(this::executorService);
         // todo set the connpool here at least for jdbc
         return this;
@@ -122,12 +122,12 @@ public class KafkaMessagingClientProviderBuilder implements MessagingClientProvi
         numberofmessagestoconsume = s;
     }
 
-    MessagingOperations operations() {
-        return operations;
+    MessagingChannels channels() {
+        return channels;
     }
 
-    public KafkaMessagingClientProviderBuilder operations(MessagingOperations operations) {
-        this.operations = operations;
+    public KafkaMessagingClientProviderBuilder channels(MessagingChannels channels) {
+        this.channels = channels;
         return this;
     }
 

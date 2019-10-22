@@ -21,7 +21,7 @@ import io.helidon.health.HealthSupport;
 import io.helidon.media.jsonb.server.JsonBindingSupport;
 import io.helidon.media.jsonp.server.JsonSupport;
 import io.helidon.messagingclient.MessagingClient;
-import io.helidon.messagingclient.MessagingOperationType;
+import io.helidon.messagingclient.MessagingChannelType;
 import io.helidon.messagingclient.health.MessagingClientHealthCheck;
 import io.helidon.messagingclient.metrics.MessagingCounter;
 import io.helidon.messagingclient.metrics.MessagingTimer;
@@ -68,12 +68,12 @@ public final class Main {
         System.out.println("Main.createRouting messagingsourceConfig=" + config.get("source").name());
 
         MessagingClient messagingClient = MessagingClient.builder(messagingConfig)
-                // add an interceptor to named/filters of operation(s)
+                // add an interceptor to named/filters of channel(s)
                 .addInterceptor(MessagingCounter.create(),  //todo would be from config
                         "subscribe-with-orderpattern", "send-with-order-props", "filter-orders")
-                // add an interceptor to operation type(s)
-                .addInterceptor(MessagingTimer.create(), MessagingOperationType.MESSAGING, MessagingOperationType.UNKNOWN)
-                // add an interceptor to all operations
+                // add an interceptor to channel type(s)
+                .addInterceptor(MessagingTimer.create(), MessagingChannelType.MESSAGING, MessagingChannelType.UNKNOWN)
+                // add an interceptor to all channels
                 .addInterceptor(MessagingClientTracing.create())
                 .build();
 

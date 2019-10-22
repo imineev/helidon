@@ -28,9 +28,9 @@ import io.helidon.common.context.Context;
 class MessagingInterceptorContextImpl implements MessagingInterceptorContext {
     private final String messagingType;
     private Context context;
-    private String operationName;
-    private String operation;
-    private CompletionStage<Void> operationFuture;
+    private String channelName;
+    private String channel;
+    private CompletionStage<Void> channelFuture;
     private CompletionStage<Message> queryFuture;
     private List<Object> indexedParams;
     private Map<String, Object> namedParams;
@@ -51,18 +51,18 @@ class MessagingInterceptorContextImpl implements MessagingInterceptorContext {
     }
 
     @Override
-    public String operationName() {
-        return operationName;
+    public String channelName() {
+        return channelName;
     }
 
     @Override
-    public String operation() {
-        return operation;
+    public String channel() {
+        return channel;
     }
 
     @Override
-    public CompletionStage<Void> operationFuture() {
-        return operationFuture;
+    public CompletionStage<Void> channelFuture() {
+        return channelFuture;
     }
 
     @Override
@@ -70,13 +70,13 @@ class MessagingInterceptorContextImpl implements MessagingInterceptorContext {
         if (indexed) {
             return Optional.of(indexedParams);
         }
-        throw new IllegalStateException("Indexed parameters are not available for operation with named parameters");
+        throw new IllegalStateException("Indexed parameters are not available for channel with named parameters");
     }
 
     @Override
     public Optional<Map<String, Object>> namedParameters() {
         if (indexed) {
-            throw new IllegalStateException("Named parameters are not available for operation with indexed parameters");
+            throw new IllegalStateException("Named parameters are not available for channel with indexed parameters");
         }
         return Optional.of(namedParams);
     }
@@ -98,14 +98,14 @@ class MessagingInterceptorContextImpl implements MessagingInterceptorContext {
     }
 
     @Override
-    public MessagingInterceptorContext operationName(String newName) {
-        this.operationName = newName;
+    public MessagingInterceptorContext channelName(String newName) {
+        this.channelName = newName;
         return this;
     }
 
     @Override
-    public MessagingInterceptorContext operationFuture(CompletionStage<Void> operationFuture) {
-        this.operationFuture = operationFuture;
+    public MessagingInterceptorContext channelFuture(CompletionStage<Void> channelFuture) {
+        this.channelFuture = channelFuture;
         return this;
     }
 
@@ -121,16 +121,16 @@ class MessagingInterceptorContextImpl implements MessagingInterceptorContext {
     }
 
     @Override
-    public MessagingInterceptorContext operation(String operation, List<Object> indexedParams) {
-        this.operation = operation;
+    public MessagingInterceptorContext channel(String channel, List<Object> indexedParams) {
+        this.channel = channel;
         this.indexedParams = indexedParams;
         this.indexed = true;
         return this;
     }
 
     @Override
-    public MessagingInterceptorContext operation(String operation, Map<String, Object> namedParams) {
-        this.operation = operation;
+    public MessagingInterceptorContext channel(String channel, Map<String, Object> namedParams) {
+        this.channel = channel;
         this.namedParams = namedParams;
         this.indexed = false;
         return this;
@@ -141,7 +141,7 @@ class MessagingInterceptorContextImpl implements MessagingInterceptorContext {
         if (indexed) {
             this.indexedParams = indexedParameters;
         } else {
-            throw new IllegalStateException("Cannot configure indexed parameters for a operation that expects named "
+            throw new IllegalStateException("Cannot configure indexed parameters for a channel that expects named "
                                                     + "parameters");
         }
         return this;
@@ -150,7 +150,7 @@ class MessagingInterceptorContextImpl implements MessagingInterceptorContext {
     @Override
     public MessagingInterceptorContext parameters(Map<String, Object> namedParameters) {
         if (indexed) {
-            throw new IllegalStateException("Cannot configure named parameters for a operation that expects indexed "
+            throw new IllegalStateException("Cannot configure named parameters for a channel that expects indexed "
                                                     + "parameters");
         }
 

@@ -25,7 +25,7 @@ messaging-jms-demo:
   password: "AQ#####"
   queue: "demoqueue"
   config.numberofmessagestoconsume: -1
-  operations:
+  channels:
     listenForMessagesWithPattern: "pattern regex..."
     subscribe: "pattern regex..."
     produce: "pattern regex..." # or sendMessagesWith...

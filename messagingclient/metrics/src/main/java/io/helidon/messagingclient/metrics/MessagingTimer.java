@@ -49,7 +49,7 @@ public final class MessagingTimer extends MessagingMetric<Timer> {
 
     /**
      * Create a new timer using default configuration.
-     * <p>By default the name format is {@code db.timer.operation-name}, where {@code operation-name}
+     * <p>By default the name format is {@code db.timer.channel-name}, where {@code channel-name}
      * is provided at runtime.
      *
      * @return a new timer

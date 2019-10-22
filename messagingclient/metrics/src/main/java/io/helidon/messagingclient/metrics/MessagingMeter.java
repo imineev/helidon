@@ -47,7 +47,7 @@ public final class MessagingMeter extends MessagingMetric<Meter> {
 
     /**
      * Create a new meter using default configuration.
-     * <p>By default the name format is {@code db.meter.operation-name}, where {@code operation-name}
+     * <p>By default the name format is {@code db.meter.channel-name}, where {@code channel-name}
      * is provided at runtime.
      *
      * @return a new meter

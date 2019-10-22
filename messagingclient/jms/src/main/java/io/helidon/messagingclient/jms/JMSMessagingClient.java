@@ -11,7 +11,7 @@ public class JMSMessagingClient implements MessagingClient {
     private final JMSMessagingClientConfig config;
     private final ExecutorService executorService;
     private final InterceptorSupport interceptors;
-    private final MessagingOperations operations;
+    private final MessagingChannels channels;
     private final ConnectionPool connectionPool;
 
     JMSMessagingClient(JMSMessagingClientProviderBuilder builder) {
@@ -23,7 +23,7 @@ public class JMSMessagingClient implements MessagingClient {
         System.out.println("JMSMessagingClient config.url():" + config.url());
         System.out.println("JMSMessagingClient config.numberofmessagestoconsume():" + config.numberofmessagestoconsume());
         this.interceptors = builder.interceptors();
-        this.operations = builder.operations();
+        this.channels = builder.channels();
     }
 
     @Override
@@ -37,22 +37,22 @@ public class JMSMessagingClient implements MessagingClient {
     }
 
     @Override
-    public <T> T operation(Function<MessagingOperationOptions, T> executor) {
+    public <T> T channel(Function<MessagingChannelOptions, T> executor) {
         return executor.apply(
-                new JMSExecute(executorService, operations, interceptors, config, connectionPool));
+                new JMSExecute(executorService, channels, interceptors, config, connectionPool));
     }
 
-    private class JMSExecute extends AbstractMessagingExecute implements MessagingOperationOptions {
+    private class JMSExecute extends AbstractMessagingExecute implements MessagingChannelOptions {
         private final ExecutorService executorService;
         private final InterceptorSupport interceptors;
         private final JMSMessagingClientConfig config;
         private final ConnectionPool connectionPool;
 
         JMSExecute(ExecutorService executorService,
-                   MessagingOperations operations,
+                   MessagingChannels channels,
                    InterceptorSupport interceptors,
                    JMSMessagingClientConfig config, ConnectionPool connectionPool) {
-            super(operations);
+            super(channels);
             this.executorService = executorService;
             this.interceptors = interceptors;
             this.config = config;
@@ -60,8 +60,8 @@ public class JMSMessagingClient implements MessagingClient {
         }
 
         @Override
-        public <D extends MessagingOperation<D, R>, R> MessagingOperation<D, R> filterForEndpoint(String filter) {
-            return new JMSMessagingOperation(executorService, interceptors, connectionPool, config);
+        public <D extends MessagingChannel<D, R>, R> MessagingChannel<D, R> filterForEndpoint(String filter) {
+            return new JMSMessagingChannel(executorService, interceptors, connectionPool, config);
         }
     }
 }

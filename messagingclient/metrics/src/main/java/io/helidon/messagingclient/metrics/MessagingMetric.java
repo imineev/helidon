@@ -58,12 +58,12 @@ abstract class MessagingMetric<T extends Metric> implements MessagingInterceptor
     protected abstract String defaultNamePrefix();
 
     @Override
-    public CompletableFuture<MessagingInterceptorContext> operation(MessagingInterceptorContext interceptorContext) {
-//        DbOperationType dbOperationType = interceptorContext.operationType();
-        String operationName = interceptorContext.operationName();
+    public CompletableFuture<MessagingInterceptorContext> channel(MessagingInterceptorContext interceptorContext) {
+//        DbChannelType dbChannelType = interceptorContext.channelType();
+        String channelName = interceptorContext.channelName();
 
-        T metric = cache.computeIfAbsent(operationName, s -> {
-//            String name = nameFunction.apply(operationName, dbOperationType);
+        T metric = cache.computeIfAbsent(channelName, s -> {
+//            String name = nameFunction.apply(channelName, dbChannelType);
             String name = "messagingobjectname"; //todo paul
             Metadata metadata;
 
@@ -81,7 +81,7 @@ abstract class MessagingMetric<T extends Metric> implements MessagingInterceptor
             return metric(registry, metadata);
         });
 
-        executeMetric(metric, interceptorContext.operationFuture());
+        executeMetric(metric, interceptorContext.channelFuture());
 
         return CompletableFuture.completedFuture(interceptorContext);
     }

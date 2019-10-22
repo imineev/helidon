@@ -53,7 +53,7 @@ public abstract class DbMetricBuilder<T extends DbMetricBuilder<T>> {
     }
 
     /**
-     * Whether to measure failed operations.
+     * Whether to measure failed channels.
      *
      * @param shouldWe set to {@code false} if errors should be ignored
      * @return updated builder instance
@@ -64,7 +64,7 @@ public abstract class DbMetricBuilder<T extends DbMetricBuilder<T>> {
     }
 
     /**
-     * Whether to measure successful operations.
+     * Whether to measure successful channels.
      *
      * @param shouldWe set to {@code false} if successes should be ignored
      * @return updated builder instance
@@ -107,9 +107,9 @@ public abstract class DbMetricBuilder<T extends DbMetricBuilder<T>> {
      * </tr>
      * <tr>
      *     <td>name-format</td>
-     *     <td>{@code db.metric-type.operation-name}</td>
-     *     <td>A string format used to construct a metric name. The format gets two parameters: the operation name and the
-     *     operation type</td>
+     *     <td>{@code db.metric-type.channel-name}</td>
+     *     <td>A string format used to construct a metric name. The format gets two parameters: the channel name and the
+     *     channel type</td>
      * </tr>
      * <tr>
      *     <td>description</td>

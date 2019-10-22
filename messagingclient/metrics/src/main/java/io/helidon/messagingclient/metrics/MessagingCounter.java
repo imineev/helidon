@@ -47,7 +47,7 @@ public final class MessagingCounter extends MessagingMetric<Counter> {
 
     /**
      * Create a new counter using default configuration.
-     * <p>By default the name format is {@code db.counter.operation-name}, where {@code operation-name}
+     * <p>By default the name format is {@code db.counter.channel-name}, where {@code channel-name}
      * is provided at runtime.
      *
      * @return a new counter

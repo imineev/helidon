@@ -81,7 +81,7 @@ public final class JsonProcessingMapper {
 
     public List<Object> toIndexedParameters(JsonObject value) {
         // in case the underlying map is linked, we can do this
-        // obviously the number of parameters must match the number in operation, so most likely this is
+        // obviously the number of parameters must match the number in channel, so most likely this is
         // going to fail
         List<Object> result = new LinkedList<>();
         value.forEach((name, json) -> result.add(toObject(name, json, value)));

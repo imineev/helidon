@@ -26,7 +26,7 @@ messaging-kafka-demo:
   bootstrap.servers: "localhost:9092"
   topic: "demotopic"
   config.numberofmessagestoconsume: -1
-  operations:
+  channels:
     listenForMessagesWithPattern: "pattern regex..."
     subscribe: "pattern regex..."
     produce: "pattern regex..." # or sendMessagesWith...

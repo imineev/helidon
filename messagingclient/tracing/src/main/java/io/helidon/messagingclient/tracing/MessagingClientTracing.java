@@ -53,20 +53,20 @@ public class MessagingClientTracing implements MessagingInterceptor {
     }
 
     @Override
-    public CompletableFuture<MessagingInterceptorContext> operation(MessagingInterceptorContext interceptorContext) {
+    public CompletableFuture<MessagingInterceptorContext> channel(MessagingInterceptorContext interceptorContext) {
         Context context = interceptorContext.context();
         Tracer tracer = context.get(Tracer.class).orElseGet(GlobalTracer::get);
 
         // now if span context is missing, we build a span without a parent
-        Tracer.SpanBuilder spanBuilder = tracer.buildSpan(interceptorContext.messagingType() + ":" + interceptorContext.operationName());
+        Tracer.SpanBuilder spanBuilder = tracer.buildSpan(interceptorContext.messagingType() + ":" + interceptorContext.channelName());
 
         context.get(SpanContext.class)
                 .ifPresent(spanBuilder::asChildOf);
 
         Span span = spanBuilder.start();
-//        span.setTag("type", interceptorContext.operationType().toString());
+//        span.setTag("type", interceptorContext.channelType().toString());
 
-        interceptorContext.operationFuture().thenAccept(nothing -> span.log(CollectionsHelper.mapOf("type", "operation")));
+        interceptorContext.channelFuture().thenAccept(nothing -> span.log(CollectionsHelper.mapOf("type", "channel")));
 
         interceptorContext.resultFuture().thenAccept(count -> span.log(CollectionsHelper.mapOf("type", "result",
                                                                                                "count", count)).finish())

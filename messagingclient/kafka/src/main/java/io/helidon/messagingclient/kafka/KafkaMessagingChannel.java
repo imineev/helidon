@@ -28,24 +28,24 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.Logger;
 
-//todo this is simply Producer/Consumer API with executor and so add (likely in different operation class)...
+//todo this is simply Producer/Consumer API with executor and so add (likely in different channel class)...
 // - Reactor Kafka
 // - Connector API
 // - Streams API
-public class KafkaMessagingOperation implements MessagingOperation {
+public class KafkaMessagingChannel implements MessagingChannel {
     private final ExecutorService executorService;
     private final KafkaMessagingClientConfig config;
     private final InterceptorSupport interceptors;
     private final String messagingType = "kafka";
-    private final String operationName = "all"; //todo should serve the filter(name) purpose, verify messagecontext (update)
+    private final String channelName = "all"; //todo should serve the filter(name) purpose, verify messagecontext (update)
     private final String filter;
-    private final MessagingOperationType operationType = MessagingOperationType.MESSAGING;
+    private final MessagingChannelType channelType = MessagingChannelType.MESSAGING;
 
-    private static final Logger LOGGER = Logger.getLogger(KafkaMessagingOperation.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(KafkaMessagingChannel.class.getName());
 
-    public KafkaMessagingOperation(ExecutorService executorService,
-                                   InterceptorSupport interceptors,
-                                   KafkaMessagingClientConfig config, String filter) {
+    public KafkaMessagingChannel(ExecutorService executorService,
+                                 InterceptorSupport interceptors,
+                                 KafkaMessagingClientConfig config, String filter) {
         this.executorService = executorService;
         this.interceptors = interceptors;
         this.config = config;
@@ -53,16 +53,16 @@ public class KafkaMessagingOperation implements MessagingOperation {
     }
 
     public CompletionStage<Message> incoming(MessageProcessor messageProcessor) {
-        LOGGER.fine(() -> String.format("KafkaMessagingOperation.operation incoming"));
+        LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel incoming"));
         CompletableFuture<Message> queryFuture = new CompletableFuture<>();
-        CompletableFuture<Void> operationFuture = new CompletableFuture<>();
+        CompletableFuture<Void> channelFuture = new CompletableFuture<>();
         MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
                 .resultFuture(queryFuture)
-                .operationFuture(operationFuture);
+                .channelFuture(channelFuture);
         update(messagingContext);
         CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingContext);
         messagingContextFuture.exceptionally(throwable -> {
-            operationFuture.completeExceptionally(throwable);
+            channelFuture.completeExceptionally(throwable);
             queryFuture.completeExceptionally(throwable);
             return null;
         });
@@ -85,22 +85,24 @@ public class KafkaMessagingOperation implements MessagingOperation {
                 .addAssignListener(partitions -> System.out.println("onPartitionsAssigned {}:" + partitions))
                 .addRevokeListener(partitions -> System.out.println("onPartitionsRevoked {}:" + partitions));
         Flux<ReceiverRecord<Integer, String>> kafkaFlux = KafkaReceiver.create(options).receive();
+        LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel incoming kafkaFlux:" + kafkaFlux));
         disposable = kafkaFlux.subscribe(record -> {
             ReceiverOffset offset = record.receiverOffset();
-            System.out.printf("Received message: topic-partition=%s offset=%d timestamp=%s key=%d value=%s\n",
+            System.out.printf("incoming received message: topic-partition=%s offset=%d timestamp=%s key=%d value=%s\n",
                     offset.topicPartition(),
                     offset.offset(),
                     dateFormat.format(new Date(record.timestamp())),
                     record.key(),
                     record.value());
+            System.out.println("KafkaMessagingChannel.incoming record.value():"+record.value());
             Message message = new KafkaMessage(record.value());
             messageProcessor.processMessage(message);
-            operationFuture.complete(null);
+            channelFuture.complete(null);
             queryFuture.complete(message);
             offset.acknowledge();
             latch.countDown();
         });
-
+        LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel incoming disposable:" + disposable));
         try {
             latch.await(10, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
@@ -110,26 +112,133 @@ public class KafkaMessagingOperation implements MessagingOperation {
         return queryFuture;
     }
 
+    public CompletionStage<Message> outgoing(MessageProcessor messageProcessor, Message kafkamessage) {
+        System.out.println("KafkaMessagingChannel.channel outgoing");
+        LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel outgoing"));
 
-    public CompletionStage<Message> incomingExecutor(MessageProcessor messageProcessor) {
-        LOGGER.fine(() -> String.format("KafkaMessagingOperation.operation incoming"));
         CompletableFuture<Message> queryFuture = new CompletableFuture<>();
-        CompletableFuture<Void> operationFuture = new CompletableFuture<>();
+        CompletableFuture<Void> channelFuture = new CompletableFuture<>();
         MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
                 .resultFuture(queryFuture)
-                .operationFuture(operationFuture);
+                .channelFuture(channelFuture);
         update(messagingContext);
         CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingContext);
-        return doIncoming(messagingContextFuture, operationFuture, queryFuture, messageProcessor);
+        messagingContextFuture.exceptionally(throwable -> {
+            channelFuture.completeExceptionally(throwable);
+            queryFuture.completeExceptionally(throwable);
+            return null;
+        });
+        int count = 1;
+        CountDownLatch latch = new CountDownLatch(count);
+        Map<String, Object> props = new HashMap<>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.bootstrapservers());
+        props.put(ProducerConfig.CLIENT_ID_CONFIG, "sample-producer");
+        props.put(ProducerConfig.ACKS_CONFIG, "all");
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        SenderOptions<Integer, String> senderOptions = SenderOptions.create(props);
+        KafkaSender<Integer, String> sender = KafkaSender.create(senderOptions);
+        SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss:SSS z dd MMM yyyy");
+        System.out.println("KafkaMessagingChannel.channel outgoing count:" + count);
+        sender.<Integer>send(Flux.range(1, count)
+                .map(i -> SenderRecord.create(new ProducerRecord<>(config.topic(), i, kafkamessage.getString() + i), i)))
+                .doOnError(e -> System.out.println("Send failed:" + e))
+                .subscribe(r -> {
+                    RecordMetadata metadata = r.recordMetadata();
+                    System.out.printf("Message %d sent successfully, topic-partition=%s-%d offset=%d timestamp=%s\n",
+                            r.correlationMetadata(),
+                            metadata.topic(),
+                            metadata.partition(),
+                            metadata.offset(),
+                            dateFormat.format(new Date(metadata.timestamp())));
+                    channelFuture.complete(null);
+                    KafkaMessage message = new KafkaMessage(metadata.toString());
+                    messageProcessor.processMessage(message);
+                    queryFuture.complete(message); //todo returns metadata message currently
+                    latch.countDown();
+                });
+        return queryFuture;
     }
 
-    protected CompletionStage<Message> doIncoming(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
-                                                  CompletableFuture<Void> operationFuture,
-                                                  CompletableFuture<Message> queryFuture,
-                                                  MessageProcessor messageProcessor) {
-        System.out.println("KafkaMessagingOperation.doIncoming");
+
+    /**
+     * Invoke all interceptors.
+     *
+     * @param messagingContext initial interceptor context
+     * @return future with the result of interceptors processing
+     */
+    CompletionStage<MessagingInterceptorContext> invokeInterceptors(MessagingInterceptorContext messagingContext) {
+        CompletableFuture<MessagingInterceptorContext> result = CompletableFuture.completedFuture(messagingContext);
+
+        messagingContext.context(Contexts.context().orElseGet(Context::create));
+
+        for (MessagingInterceptor interceptor : interceptors.interceptors(channelType(), channelName())) {
+            result = result.thenCompose(interceptor::channel);
+        }
+
+        return result;
+    }
+
+    private MessagingChannelType channelType() {
+        return channelType;
+    }
+
+    private String channelName() {
+        return channelName;
+    }
+
+
+    /**
+     * Update the interceptor context with the channel name, channel and
+     * channel parameters.
+     *
+     * @param messagingContext interceptor context
+     */
+    protected void update(MessagingInterceptorContext messagingContext) {
+        messagingContext.channelName(channelName);
+//        initParameters(ParamType.INDEXED);
+//
+//        if (paramType == ParamType.NAMED) {
+//            messagingContext.channel(channel, parameters.namedParams());
+//        } else {
+//            messagingContext.channel(channel, parameters.indexedParams());
+//        }
+//        messagingContext.channelType(channelType());
+    }
+
+
+    protected String messagingType() {
+        return messagingType;
+    }
+
+
+
+
+
+
+// todo unused delete...
+
+
+
+    public CompletionStage<Message> incomingExecutor(MessageProcessor messageProcessor) {
+        LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel incoming"));
+        CompletableFuture<Message> queryFuture = new CompletableFuture<>();
+        CompletableFuture<Void> channelFuture = new CompletableFuture<>();
+        MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
+                .resultFuture(queryFuture)
+                .channelFuture(channelFuture);
+        update(messagingContext);
+        CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingContext);
+        return doIncomingExecutor(messagingContextFuture, channelFuture, queryFuture, messageProcessor);
+    }
+
+    protected CompletionStage<Message> doIncomingExecutor(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
+                                                          CompletableFuture<Void> channelFuture,
+                                                          CompletableFuture<Message> queryFuture,
+                                                          MessageProcessor messageProcessor) {
+        System.out.println("KafkaMessagingChannel.doIncoming");
         messagingContextFuture.exceptionally(throwable -> {
-            operationFuture.completeExceptionally(throwable);
+            channelFuture.completeExceptionally(throwable);
             queryFuture.completeExceptionally(throwable);
             return null;
         });
@@ -147,8 +256,8 @@ public class KafkaMessagingOperation implements MessagingOperation {
                         consumerRecords.forEach(record -> {
                             String messageTxt = "Consumer Record:" + record.key() + "," + record.value() + "," +
                                     record.partition() + "," + record.offset();
-                            System.out.println("KafkaMessagingOperation.doIncoming messageTxt:" + messageTxt);
-                            operationFuture.complete(null);
+                            System.out.println("KafkaMessagingChannel.doIncoming messageTxt:" + messageTxt);
+                            channelFuture.complete(null);
                             KafkaMessage message = new KafkaMessage(messageTxt);
                             messageProcessor.processMessage(message);
                             queryFuture.complete(message);
@@ -156,7 +265,7 @@ public class KafkaMessagingOperation implements MessagingOperation {
                         consumer.commitAsync();
                     }
                 } catch (Exception e) {
-                    operationFuture.completeExceptionally(e);
+                    channelFuture.completeExceptionally(e);
                     queryFuture.completeExceptionally(e);
                 }
             });
@@ -177,76 +286,26 @@ public class KafkaMessagingOperation implements MessagingOperation {
         return consumer;
     }
 
-    public CompletionStage<Message> outgoing(MessageProcessor messageProcessor) {
-        LOGGER.fine(() -> String.format("KafkaMessagingOperation.operation outgoing"));
-
-        CompletableFuture<Message> queryFuture = new CompletableFuture<>();
-        CompletableFuture<Void> operationFuture = new CompletableFuture<>();
-        MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
-                .resultFuture(queryFuture)
-                .operationFuture(operationFuture);
-        update(messagingContext);
-        CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingContext);
-        messagingContextFuture.exceptionally(throwable -> {
-            operationFuture.completeExceptionally(throwable);
-            queryFuture.completeExceptionally(throwable);
-            return null;
-        });
-        KafkaSender<Integer, String> sender;
-        SimpleDateFormat dateFormat;
-        int count = 20;
-        CountDownLatch latch = new CountDownLatch(count);
-
-        Map<String, Object> props = new HashMap<>();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.bootstrapservers());
-        props.put(ProducerConfig.CLIENT_ID_CONFIG, "sample-producer");
-        props.put(ProducerConfig.ACKS_CONFIG, "all");
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        SenderOptions<Integer, String> senderOptions = SenderOptions.create(props);
-
-        sender = KafkaSender.create(senderOptions);
-        dateFormat = new SimpleDateFormat("HH:mm:ss:SSS z dd MMM yyyy");
-        sender.<Integer>send(Flux.range(1, count)
-                .map(i -> SenderRecord.create(new ProducerRecord<>(config.topic(), i, "Message_" + i), i)))
-                .doOnError(e -> System.out.println("Send failed:" + e))
-                .subscribe(r -> {
-                    RecordMetadata metadata = r.recordMetadata();
-                    System.out.printf("Message %d sent successfully, topic-partition=%s-%d offset=%d timestamp=%s\n",
-                            r.correlationMetadata(),
-                            metadata.topic(),
-                            metadata.partition(),
-                            metadata.offset(),
-                            dateFormat.format(new Date(metadata.timestamp())));
-                    operationFuture.complete(null);
-                    KafkaMessage message = new KafkaMessage(metadata.toString());
-                    messageProcessor.processMessage(message);
-                    queryFuture.complete(message);
-                    latch.countDown();
-                });
-        return queryFuture;
-    }
-
     public CompletionStage<Message> outgoingExecutor(MessageProcessor messageProcessor) {
-        LOGGER.fine(() -> String.format("KafkaMessagingOperation.operation outgoing"));
+        LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel outgoing"));
         CompletableFuture<Message> queryFuture = new CompletableFuture<>();
-        CompletableFuture<Void> operationFuture = new CompletableFuture<>();
+        CompletableFuture<Void> channelFuture = new CompletableFuture<>();
         MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
                 .resultFuture(queryFuture)
-                .operationFuture(operationFuture);
+                .channelFuture(channelFuture);
         update(messagingContext);
         CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingContext);
-        return doOutgoing(messagingContextFuture, operationFuture, queryFuture, messageProcessor);
+        return doOutgoingExecutor(messagingContextFuture, channelFuture, queryFuture, messageProcessor);
     }
 
-    protected CompletionStage<Message> doOutgoing(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
-                                                  CompletableFuture<Void> operationFuture,
-                                                  CompletableFuture<Message> queryFuture,
-                                                  MessageProcessor messageProcessor) {
-        System.out.println("KafkaMessagingOperation.doOutgoing");
-        // query and operation future must always complete either OK, or exceptionally
+    protected CompletionStage<Message> doOutgoingExecutor(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
+                                                          CompletableFuture<Void> channelFuture,
+                                                          CompletableFuture<Message> queryFuture,
+                                                          MessageProcessor messageProcessor) {
+        System.out.println("KafkaMessagingChannel.doOutgoing");
+        // query and channel future must always complete either OK, or exceptionally
         messagingContextFuture.exceptionally(throwable -> {
-            operationFuture.completeExceptionally(throwable);
+            channelFuture.completeExceptionally(throwable);
             queryFuture.completeExceptionally(throwable);
             return null;
         });
@@ -266,13 +325,13 @@ public class KafkaMessagingOperation implements MessagingOperation {
                                         "meta(partition=%d, offset=%d) time=%d\n",
                                 record.key(), record.value(), metadata.partition(),
                                 metadata.offset(), elapsedTime);
-                        operationFuture.complete(null);
+                        channelFuture.complete(null);
                         KafkaMessage message = new KafkaMessage("test message");
                         messageProcessor.processMessage(message);
                         queryFuture.complete(message);
                     }
                 } catch (Exception e) {
-                    operationFuture.completeExceptionally(e);
+                    channelFuture.completeExceptionally(e);
                     queryFuture.completeExceptionally(e);
                 } finally { // only if not -1 ...
 //            producer.flush();
@@ -282,6 +341,7 @@ public class KafkaMessagingOperation implements MessagingOperation {
             return queryFuture;
         });
     }
+
 
     private KafkaProducer<Object, Object> initKafkaProducer() {
         Properties props = new Properties();
@@ -295,55 +355,4 @@ public class KafkaMessagingOperation implements MessagingOperation {
                 StringSerializer.class.getName());
         return new KafkaProducer<>(props);
     }
-
-    /**
-     * Invoke all interceptors.
-     *
-     * @param messagingContext initial interceptor context
-     * @return future with the result of interceptors processing
-     */
-    CompletionStage<MessagingInterceptorContext> invokeInterceptors(MessagingInterceptorContext messagingContext) {
-        CompletableFuture<MessagingInterceptorContext> result = CompletableFuture.completedFuture(messagingContext);
-
-        messagingContext.context(Contexts.context().orElseGet(Context::create));
-
-        for (MessagingInterceptor interceptor : interceptors.interceptors(operationType(), operationName())) {
-            result = result.thenCompose(interceptor::operation);
-        }
-
-        return result;
-    }
-
-    private MessagingOperationType operationType() {
-        return operationType;
-    }
-
-    private String operationName() {
-        return operationName;
-    }
-
-
-    /**
-     * Update the interceptor context with the operation name, operation and
-     * operation parameters.
-     *
-     * @param messagingContext interceptor context
-     */
-    protected void update(MessagingInterceptorContext messagingContext) {
-        messagingContext.operationName(operationName);
-//        initParameters(ParamType.INDEXED);
-//
-//        if (paramType == ParamType.NAMED) {
-//            messagingContext.operation(operation, parameters.namedParams());
-//        } else {
-//            messagingContext.operation(operation, parameters.indexedParams());
-//        }
-//        messagingContext.operationType(operationType());
-    }
-
-
-    protected String messagingType() {
-        return messagingType;
-    }
-
 }

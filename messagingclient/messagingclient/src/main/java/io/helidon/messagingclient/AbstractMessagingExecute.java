@@ -5,9 +5,9 @@ package io.helidon.messagingclient;
  */
 public abstract class AbstractMessagingExecute {
 
-    private final MessagingOperations operations;
+    private final MessagingChannels channels;
 
-    public AbstractMessagingExecute(MessagingOperations operations) {
-        this.operations = operations;
+    public AbstractMessagingExecute(MessagingChannels channels) {
+        this.channels = channels;
     }
 }

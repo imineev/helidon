@@ -42,7 +42,7 @@ public interface MessagingInterceptorProvider {
      * Create a new interceptor instance with the configuration provided.
      *
      * @param config configuration node with additional properties that are (maybe) configured for this interceptor
-     * @return an interceptor to handle Messagingoperations
+     * @return an interceptor to handle Messagingchannels
      */
     MessagingInterceptor create(Config config);
 }

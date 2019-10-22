@@ -10,7 +10,7 @@ public class KafkaMessagingClient implements MessagingClient {
     private final KafkaMessagingClientConfig config;
     private final ExecutorService executorService;
     private final InterceptorSupport interceptors;
-    private final MessagingOperations operations;
+    private final MessagingChannels channels;
 
     KafkaMessagingClient(KafkaMessagingClientProviderBuilder builder) {
         this.config = builder.messagingConfig();
@@ -19,7 +19,7 @@ public class KafkaMessagingClient implements MessagingClient {
         System.out.println("KafkaMessagingClient config.bootstrapservers():" + config.bootstrapservers());
         System.out.println("KafkaMessagingClient config.numberofmessagestoconsume():" + config.numberofmessagestoconsume());
         this.interceptors = builder.interceptors();
-        this.operations = builder.operations();
+        this.channels = builder.channels();
     }
 
     @Override
@@ -33,29 +33,29 @@ public class KafkaMessagingClient implements MessagingClient {
     }
 
     @Override
-    public <T> T operation(Function<MessagingOperationOptions, T> executor) {
+    public <T> T channel(Function<MessagingChannelOptions, T> executor) {
         return executor.apply(
-                new KafkaExecute(executorService, operations, interceptors, config));
+                new KafkaExecute(executorService, channels, interceptors, config));
     }
 
-    private class KafkaExecute extends AbstractMessagingExecute implements MessagingOperationOptions {
+    private class KafkaExecute extends AbstractMessagingExecute implements MessagingChannelOptions {
         private final ExecutorService executorService;
         private final InterceptorSupport interceptors;
         private final KafkaMessagingClientConfig config;
 
         KafkaExecute(ExecutorService executorService,
-                    MessagingOperations operations,
+                    MessagingChannels channels,
                     InterceptorSupport interceptors,
                      KafkaMessagingClientConfig config) {
-            super(operations);
+            super(channels);
             this.executorService = executorService;
             this.interceptors = interceptors;
             this.config = config;
         }
 
         @Override
-        public <D extends MessagingOperation<D, R>, R> MessagingOperation<D, R> filterForEndpoint(String filter) {
-            return new KafkaMessagingOperation(
+        public <D extends MessagingChannel<D, R>, R> MessagingChannel<D, R> filterForEndpoint(String filter) {
+            return new KafkaMessagingChannel(
                     executorService, interceptors, config, filter);
         }
     }

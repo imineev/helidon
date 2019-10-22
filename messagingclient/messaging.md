@@ -11,7 +11,7 @@ The Helidon Messaging Client is an abstraction layer over
 
 The Helidon Messaging Client also supports
 - the above three (listening, handling, publishing) combined forming the fundamentlas of event sourcing and CQRS
-- this combination using AQ in order to take advantage of atomicity provided via use of local transaction for all three operations
+- this combination using AQ in order to take advantage of atomicity provided via use of local transaction for all three channels
 - this combination also supporting Kafka, Debezium, etc. 
 - event sourcing to facilitate Sagas
 
@@ -33,7 +33,7 @@ The Helidon Messaging Client is related to
 The API main interfaces/classes:
 - `HelidonMessaging` - the entry point to create an instance of a Helidon Messaging, uses the usual `Builder`/`Config` pattern
     the provider to be used is either explicitly configured, or defined by name (see `MessageProvider` below) or
-    the first available one is used (ordered by priority). The instance has two methods to execute operations -
+    the first available one is used (ordered by priority). The instance has two methods to execute channels -
     `execute` and `inTransaction`
 - `MessagingException` a runtime exception to use when something fails (wrap underlying exception for system such as `javax.jms.JMSException`)
 

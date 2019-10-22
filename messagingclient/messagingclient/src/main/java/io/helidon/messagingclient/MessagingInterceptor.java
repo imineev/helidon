@@ -18,15 +18,15 @@ package io.helidon.messagingclient;
 import java.util.concurrent.CompletionStage;
 
 /**
- * Interceptor to handle work around a messaging operation.
+ * Interceptor to handle work around a messaging channel.
  * Example of such interceptors: tracing, metrics.
  * <p>
- * Interceptors can be defined as global interceptors, interceptors for a type of a operation and interceptors for a named
- * operation.
+ * Interceptors can be defined as global interceptors, interceptors for a type of a channel and interceptors for a named
+ * channel.
  * These are executed in the following order:
  * <ol>
- *     <li>Named interceptors - if there are any interceptors configured for a specific operation, they are executed first</li>
- *     <li>Type interceptors - if there are any interceptors configured for a type of operation, they are executed next</li>
+ *     <li>Named interceptors - if there are any interceptors configured for a specific channel, they are executed first</li>
+ *     <li>Type interceptors - if there are any interceptors configured for a type of channel, they are executed next</li>
  *     <li>Global interceptors - if there are any interceptors configured globally, they are executed last</li>
  * </ol>
  * Order of interceptors within a group is based on the order they are registered in a builder, or by their priority when
@@ -35,11 +35,11 @@ import java.util.concurrent.CompletionStage;
 @FunctionalInterface
 public interface MessagingInterceptor {
     /**
-     * Operation execution to be intercepted.
-     * This method is called before the operation execution starts.
+     * Channel execution to be intercepted.
+     * This method is called before the channel execution starts.
      *
      * @param context Context to access data needed to process an interceptor
      * @return completion stage that completes when this interceptor is finished
      */
-    CompletionStage<MessagingInterceptorContext> operation(MessagingInterceptorContext context);
+    CompletionStage<MessagingInterceptorContext> channel(MessagingInterceptorContext context);
 }

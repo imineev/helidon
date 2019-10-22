@@ -24,7 +24,7 @@ import io.helidon.common.context.Context;
 import io.helidon.messagingclient.spi.MessagingClientProvider;
 
 /**
- * Interceptor context to get (and possibly manipulate) messaging operations.
+ * Interceptor context to get (and possibly manipulate) messaging channels.
  * <p>
  * This is a mutable object - acts as a builder during the invocation of {@link MessagingInterceptor}.
  * The interceptors are executed sequentially, so there is no need for synchronization.
@@ -55,26 +55,26 @@ public interface MessagingInterceptorContext {
     Context context();
 
     /**
-     * Name of a operation to be executed.
-     * Ad hoc operations have names generated.
+     * Name of a channel to be executed.
+     * Ad hoc channels have names generated.
      *
-     * @return name of the operation
+     * @return name of the channel
      */
-    String operationName();
+    String channelName();
 
     /**
-     * Text of the operation to be executed.
+     * Text of the channel to be executed.
      *
-     * @return operation text
+     * @return channel text
      */
-    String operation();
+    String channel();
 
     /**
-     * A stage that is completed once the operation finishes execution.
+     * A stage that is completed once the channel finishes execution.
      *
-     * @return operation future
+     * @return channel future
      */
-    CompletionStage<Void> operationFuture();
+    CompletionStage<Void> channelFuture();
 
     /**
      * A stage that is completed once the results were fully read. The number returns either the number of modified
@@ -87,33 +87,33 @@ public interface MessagingInterceptorContext {
     /**
      * Indexed parameters (if used).
      *
-     * @return indexed parameters (empty if this operation parameters are not indexed)
+     * @return indexed parameters (empty if this channel parameters are not indexed)
      */
     Optional<List<Object>> indexedParameters();
 
     /**
      * Named parameters (if used).
      *
-     * @return named parameters (empty if this operation parameters are not named)
+     * @return named parameters (empty if this channel parameters are not named)
      */
     Optional<Map<String, Object>> namedParameters();
 
     /**
-     * Whether this is a operation with indexed parameters.
+     * Whether this is a channel with indexed parameters.
      *
-     * @return Whether this operation has indexed parameters ({@code true}) or named parameters {@code false}.
+     * @return Whether this channel has indexed parameters ({@code true}) or named parameters {@code false}.
      */
     boolean isIndexed();
 
     /**
-     * Whether this is a operation with named parameters.
+     * Whether this is a channel with named parameters.
      *
-     * @return Whether this operation has named parameters ({@code true}) or indexed parameters {@code false}.
+     * @return Whether this channel has named parameters ({@code true}) or indexed parameters {@code false}.
      */
     boolean isNamed();
 
     /**
-     * Set a new context to be used by other interceptors and when executing the operation.
+     * Set a new context to be used by other interceptors and when executing the channel.
      *
      * @param context context to use
      * @return updated interceptor context
@@ -121,20 +121,20 @@ public interface MessagingInterceptorContext {
     MessagingInterceptorContext context(Context context);
 
     /**
-     * Set a new operation name to be used.
+     * Set a new channel name to be used.
      *
-     * @param newName operation name to use
+     * @param newName channel name to use
      * @return updated interceptor context
      */
-    MessagingInterceptorContext operationName(String newName);
+    MessagingInterceptorContext channelName(String newName);
 
     /**
-     * Set a new future to mark completion of the operation.
+     * Set a new future to mark completion of the channel.
      *
-     * @param operationFuture future
+     * @param channelFuture future
      * @return updated interceptor context
      */
-    MessagingInterceptorContext operationFuture(CompletionStage<Void> operationFuture);
+    MessagingInterceptorContext channelFuture(CompletionStage<Void> channelFuture);
 
     /**
      * Set a new future to mark completion of the result (e.g. query or number of modified records).
@@ -145,29 +145,29 @@ public interface MessagingInterceptorContext {
     MessagingInterceptorContext resultFuture(CompletionStage<Message> queryFuture);
 
     /**
-     * Set a new operation with indexed parameters to be used.
+     * Set a new channel with indexed parameters to be used.
      *
-     * @param operation     operation text
+     * @param channel     channel text
      * @param indexedParams indexed parameters
      * @return updated interceptor context
      */
-    MessagingInterceptorContext operation(String operation, List<Object> indexedParams);
+    MessagingInterceptorContext channel(String channel, List<Object> indexedParams);
 
     /**
-     * Set a new operation with named parameters to be used.
+     * Set a new channel with named parameters to be used.
      *
-     * @param operation   operation text
+     * @param channel   channel text
      * @param namedParams named parameters
      * @return updated interceptor context
      */
-    MessagingInterceptorContext operation(String operation, Map<String, Object> namedParams);
+    MessagingInterceptorContext channel(String channel, Map<String, Object> namedParams);
 
     /**
      * Set new indexed parameters to be used.
      *
      * @param indexedParameters parameters
      * @return updated interceptor context
-     * @throws IllegalArgumentException in case the operation is using named parameters
+     * @throws IllegalArgumentException in case the channel is using named parameters
      */
     MessagingInterceptorContext parameters(List<Object> indexedParameters);
 
@@ -176,7 +176,7 @@ public interface MessagingInterceptorContext {
      *
      * @param namedParameters parameters
      * @return updated interceptor context
-     * @throws IllegalArgumentException in case the operation is using indexed parameters
+     * @throws IllegalArgumentException in case the channel is using indexed parameters
      */
     MessagingInterceptorContext parameters(Map<String, Object> namedParameters);
 

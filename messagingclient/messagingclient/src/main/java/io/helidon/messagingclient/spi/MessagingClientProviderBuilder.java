@@ -70,24 +70,24 @@ public interface MessagingClientProviderBuilder<T extends MessagingClientProvide
     T addInterceptor(MessagingInterceptor interceptor);
 
     /**
-     * Add an interceptor that is active only on the configured operation names.
-     * This interceptor is only executed on named operations.
+     * Add an interceptor that is active only on the configured channel names.
+     * This interceptor is only executed on named channels.
      *
      * @param interceptor interceptor instance
-     * @param operationNames operation names to be active on
+     * @param channelNames channel names to be active on
      * @return updated builder instance
      */
-    T addInterceptor(MessagingInterceptor interceptor, MessagingOperationType... operationNames);
+    T addInterceptor(MessagingInterceptor interceptor, MessagingChannelType... channelNames);
 
     /**
-     * Add an interceptor that is active only on the configured operation names.
-     * This interceptor is only executed on named operations.
+     * Add an interceptor that is active only on the configured channel names.
+     * This interceptor is only executed on named channels.
      *
      * @param interceptor interceptor instance
-     * @param operationNames operation names to be active on
+     * @param channelNames channel names to be active on
      * @return updated builder instance
      */
-    T addInterceptor(MessagingInterceptor interceptor, String... operationNames);
+    T addInterceptor(MessagingInterceptor interceptor, String... channelNames);
 
 
     /**

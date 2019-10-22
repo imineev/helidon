@@ -54,7 +54,7 @@ public class PokemonService implements Service {
     //
     private void listenForMessages(ServerRequest request, ServerResponse response, Pokemon pokemon) {
         System.out.println("listenForMessages");
-        messagingClient.operation(exec -> exec
+        messagingClient.channel(exec -> exec
                 .filterForEndpoint("kafkasubscribewithpattern")//todo get from config/pokemon subscribe(java.util.regex.Pattern
                 .incoming(new TestMessageProcessorIncoming()))
                 .thenAccept(messageReceived -> postProcessMessage(response, messageReceived))
@@ -83,9 +83,9 @@ public class PokemonService implements Service {
     private void sendMessages(ServerRequest request, ServerResponse response) {
         System.out.println("sendMessages/send message via producer");
         String message = "test messaging";
-        messagingClient.operation(exec -> exec
+        messagingClient.channel(exec -> exec
                 .filterForEndpoint("kafkasubscribewithpattern")//todo get from config/pokemon subscribe(java.util.regex.Pattern
-                .outgoing(new TestMessageProcessorOutgoing()))
+                .outgoing(new TestMessageProcessorOutgoing(), () -> "jms test message"))
                 .thenAccept(messageReceived -> postProcessMessage(response, messageReceived))
                 .exceptionally(throwable -> sendError(throwable, response));
         response.send(" message sent:" + message);

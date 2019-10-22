@@ -54,10 +54,10 @@ public class PokemonService implements Service {
     //
     private void listenForMessages(ServerRequest request, ServerResponse response, Pokemon pokemon) {
         System.out.println("listenForMessages");
-        messagingClient.operation(exec -> exec
+        messagingClient.channel(exec -> exec
                 .filterForEndpoint("kafkasubscribewithpattern")//todo get from config/pokemon subscribe(java.util.regex.Pattern
                 .incoming(new TestMessageProcessorIncoming()))
-                .thenAccept(messageReceived -> postProcessMessage(response, messageReceived))
+                .thenAccept(messageReceived -> postRecieveProcessMessage(response, messageReceived))
                 .exceptionally(throwable -> sendError(throwable, response));
     }
 
@@ -75,18 +75,23 @@ public class PokemonService implements Service {
         }
     }
 
-    private void postProcessMessage(ServerResponse response, Message messageReceived) {
-        System.out.println("PokemonService.processMessage messageReceived.getString():" + messageReceived.getString());
+    private void postSendProcessMessage(ServerResponse response, Message messageReceived) {
+        System.out.println("PokemonService.postSendProcessMessage messageReceived.getString():" + messageReceived.getString());
+        response.send("received message: " + messageReceived.getString());
+    }
+
+    private void postRecieveProcessMessage(ServerResponse response, Message messageReceived) {
+        System.out.println("PokemonService.postRecieveProcessMessage messageReceived.getString():" + messageReceived.getString());
         response.send("received message: " + messageReceived.getString());
     }
 
     private void sendMessages(ServerRequest request, ServerResponse response) {
         System.out.println("sendMessages/send message via producer");
         String message = "test messaging";
-        messagingClient.operation(exec -> exec
+        messagingClient.channel(exec -> exec
                 .filterForEndpoint("kafkasubscribewithpattern")//todo get from config/pokemon subscribe(java.util.regex.Pattern
-                .outgoing(new TestMessageProcessorOutgoing()))
-                .thenAccept(messageReceived -> postProcessMessage(response, messageReceived))
+                .outgoing(new TestMessageProcessorOutgoing(), () -> "kafka test message"))
+                .thenAccept(messageReceived -> postSendProcessMessage(response, messageReceived))
                 .exceptionally(throwable -> sendError(throwable, response));
         response.send(" message sent:" + message);
     }

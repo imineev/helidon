@@ -59,13 +59,13 @@ public interface MessagingClient {
     }
 
     /**
-     * operation for messages.
+     * channel for messages.
      *
-     * @param <T>      operation result type
-     * @param executor messaging operation executor, see {@link MessagingOperationOptions}
-     * @return operation result
+     * @param <T>      channel result type
+     * @param executor messaging channel executor, see {@link MessagingChannelOptions}
+     * @return channel result
      */
-    <T> T operation(Function<MessagingOperationOptions, T> executor);
+    <T> T channel(Function<MessagingChannelOptions, T> executor);
 
     /**
      * Create Helidon messaging handler builder.
@@ -201,9 +201,9 @@ public interface MessagingClient {
 //                            configs.forEach(typedConfig -> {
 //                                ConfigValue<List<String>> types = typedConfig.get("types").asList(String.class);
 //                                types.ifPresent(typeList -> {
-//                                    MessagingOperationType[] typeArray = typeList.stream()
-//                                            .map(MessagingOperationType::valueOf)
-//                                            .toArray(MessagingOperationType[]::new);
+//                                    MessagingChannelType[] typeArray = typeList.stream()
+//                                            .map(MessagingChannelType::valueOf)
+//                                            .toArray(MessagingChannelType[]::new);
 //
 //                                    added.set(true);
 //                                    addInterceptor(provider.create(typedConfig), typeArray);
@@ -239,7 +239,7 @@ public interface MessagingClient {
         /**
          * Add a global interceptor.
          * <p>
-         * A global interceptor is applied to each operation.
+         * A global interceptor is applied to each channel.
          *
          * @param interceptor interceptor to apply
          * @return updated builder instance
@@ -250,26 +250,26 @@ public interface MessagingClient {
         }
 
         /**
-         * Add an interceptor to specific named operations.
+         * Add an interceptor to specific named channels.
          *
          * @param interceptor    interceptor to apply
-         * @param operationNames names of operations to apply it on
+         * @param channelNames names of channels to apply it on
          * @return updated builder instance
          */
-        public Builder addInterceptor(MessagingInterceptor interceptor, MessagingOperationType... operationNames) {
-            theBuilder.addInterceptor(interceptor, operationNames);
+        public Builder addInterceptor(MessagingInterceptor interceptor, MessagingChannelType... channelNames) {
+            theBuilder.addInterceptor(interceptor, channelNames);
             return this;
         }
 
         /**
-         * Add an interceptor to specific named operations.
+         * Add an interceptor to specific named channels.
          *
          * @param interceptor    interceptor to apply
-         * @param operationNames names of operations to apply it on
+         * @param channelNames names of channels to apply it on
          * @return updated builder instance
          */
-        public Builder addInterceptor(MessagingInterceptor interceptor, String... operationNames) {
-            theBuilder.addInterceptor(interceptor, operationNames);
+        public Builder addInterceptor(MessagingInterceptor interceptor, String... channelNames) {
+            theBuilder.addInterceptor(interceptor, channelNames);
             return this;
         }
 

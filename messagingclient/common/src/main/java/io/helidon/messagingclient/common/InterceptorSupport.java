@@ -27,7 +27,7 @@ import java.util.Optional;
 import io.helidon.common.CollectionsHelper;
 import io.helidon.common.configurable.LruCache;
 import io.helidon.messagingclient.MessagingInterceptor;
-import io.helidon.messagingclient.MessagingOperationType;
+import io.helidon.messagingclient.MessagingChannelType;
 
 /**
  * Support for interceptors.
@@ -43,23 +43,23 @@ public interface InterceptorSupport {
     }
 
     /**
-     * Get a list of interceptors to be executed for the specified operation.
+     * Get a list of interceptors to be executed for the specified channel.
      *
-     * @param MessagingOperationType Type of the operation
-     * @param operationName          Name of the operation (unnamed operations should have a name generated, see
+     * @param MessagingChannelType Type of the channel
+     * @param channelName          Name of the channel (unnamed channels should have a name generated, see
      * @return list of interceptors to executed for the defined type and name (may be empty)
      * @see io.helidon.messagingclient.MessagingInterceptor
      */
-    List<MessagingInterceptor> interceptors(MessagingOperationType MessagingOperationType, String operationName);
+    List<MessagingInterceptor> interceptors(MessagingChannelType MessagingChannelType, String channelName);
 
     /**
      * Fluent API builder for {@link io.helidon.messagingclient.common.InterceptorSupport}.
      */
     final class Builder implements io.helidon.common.Builder<InterceptorSupport> {
         private final List<MessagingInterceptor> interceptors = new LinkedList<>();
-        private final Map<String, List<MessagingInterceptor>> namedOperationInterceptors = new HashMap<>();
-        private final Map<MessagingOperationType, List<MessagingInterceptor>> typeInterceptors =
-                new EnumMap<>(MessagingOperationType.class);
+        private final Map<String, List<MessagingInterceptor>> namedChannelInterceptors = new HashMap<>();
+        private final Map<MessagingChannelType, List<MessagingInterceptor>> typeInterceptors =
+                new EnumMap<>(MessagingChannelType.class);
 
         private Builder() {
         }
@@ -69,19 +69,19 @@ public interface InterceptorSupport {
         public InterceptorSupport build() {
             // the result must be immutable (if somebody modifies the builder, the behavior must not change)
             List<MessagingInterceptor> interceptors = new LinkedList<>(this.interceptors);
-            final Map<MessagingOperationType, List<MessagingInterceptor>> typeInterceptors =
+            final Map<MessagingChannelType, List<MessagingInterceptor>> typeInterceptors =
                     new EnumMap<>(this.typeInterceptors);
-            final Map<String, List<MessagingInterceptor>> namedOperationInterceptors = new HashMap<>(this.namedOperationInterceptors);
+            final Map<String, List<MessagingInterceptor>> namedChannelInterceptors = new HashMap<>(this.namedChannelInterceptors);
 
             final LruCache<CacheKey, List<MessagingInterceptor>> cachedInterceptors = LruCache.create();
             return new InterceptorSupport() {
                 @Override
-                public List<MessagingInterceptor> interceptors(MessagingOperationType MessagingOperationType, String operationName) {
+                public List<MessagingInterceptor> interceptors(MessagingChannelType MessagingChannelType, String channelName) {
                     // order is defined in MessagingInterceptor interface
-                    return cachedInterceptors.computeValue(new CacheKey(MessagingOperationType, operationName), () -> {
+                    return cachedInterceptors.computeValue(new CacheKey(MessagingChannelType, channelName), () -> {
                         List<MessagingInterceptor> result = new LinkedList<>();
-                        addAll(result, namedOperationInterceptors.get(operationName));
-                        addAll(result, typeInterceptors.get(MessagingOperationType));
+                        addAll(result, namedChannelInterceptors.get(channelName));
+                        addAll(result, typeInterceptors.get(MessagingChannelType));
                         result.addAll(interceptors);
                         return Optional.of(Collections.unmodifiableList(result));
                     }).orElseGet(CollectionsHelper::listOf);
@@ -101,29 +101,29 @@ public interface InterceptorSupport {
             return this;
         }
 
-        public Builder add(MessagingInterceptor interceptor, String... operationNames) {
-            for (String operationName : operationNames) {
-                this.namedOperationInterceptors.computeIfAbsent(operationName, theName -> new LinkedList<>())
+        public Builder add(MessagingInterceptor interceptor, String... channelNames) {
+            for (String channelName : channelNames) {
+                this.namedChannelInterceptors.computeIfAbsent(channelName, theName -> new LinkedList<>())
                         .add(interceptor);
             }
             return this;
         }
 
-        public Builder add(MessagingInterceptor interceptor, MessagingOperationType... dbOperationTypes) {
-            for (MessagingOperationType dbOperationType : dbOperationTypes) {
-                this.typeInterceptors.computeIfAbsent(dbOperationType, theType -> new LinkedList<>())
+        public Builder add(MessagingInterceptor interceptor, MessagingChannelType... dbChannelTypes) {
+            for (MessagingChannelType dbChannelType : dbChannelTypes) {
+                this.typeInterceptors.computeIfAbsent(dbChannelType, theType -> new LinkedList<>())
                         .add(interceptor);
             }
             return this;
         }
 
         private static final class CacheKey {
-            private final MessagingOperationType type;
-            private final String operationName;
+            private final MessagingChannelType type;
+            private final String channelName;
 
-            private CacheKey(MessagingOperationType type, String operationName) {
+            private CacheKey(MessagingChannelType type, String channelName) {
                 this.type = type;
-                this.operationName = operationName;
+                this.channelName = channelName;
             }
 
             @Override
@@ -136,12 +136,12 @@ public interface InterceptorSupport {
                 }
                 CacheKey cacheKey = (CacheKey) o;
                 return (type == cacheKey.type)
-                        && operationName.equals(cacheKey.operationName);
+                        && channelName.equals(cacheKey.channelName);
             }
 
             @Override
             public int hashCode() {
-                return Objects.hash(type, operationName);
+                return Objects.hash(type, channelName);
             }
         }
     }

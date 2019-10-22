@@ -13,19 +13,19 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.logging.Logger;
 
-public class JMSMessagingOperation implements MessagingOperation {
+public class JMSMessagingChannel implements MessagingChannel {
     private final ExecutorService executorService;
     private final ConnectionPool connectionPool;
     private final JMSMessagingClientConfig config;
     private final InterceptorSupport interceptors;
     private final String messagingType = "JMS";
-    private final String operationName = "all"; //todo
-    private final MessagingOperationType operationType = MessagingOperationType.MESSAGING;
+    private final String channelName = "all"; //todo
+    private final MessagingChannelType channelType = MessagingChannelType.MESSAGING;
 
-    private static final Logger LOGGER = Logger.getLogger(JMSMessagingOperation.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(JMSMessagingChannel.class.getName());
 //
-    public JMSMessagingOperation(ExecutorService executorService, InterceptorSupport interceptors,
-                                 ConnectionPool connectionPool, JMSMessagingClientConfig config) {
+    public JMSMessagingChannel(ExecutorService executorService, InterceptorSupport interceptors,
+                               ConnectionPool connectionPool, JMSMessagingClientConfig config) {
         this.executorService = executorService;
         this.interceptors = interceptors;
         this.config = config;
@@ -34,30 +34,30 @@ public class JMSMessagingOperation implements MessagingOperation {
 
 
     public CompletionStage<Message> incoming(MessageProcessor testMessageProcessor) {
-        LOGGER.fine(() -> String.format("JMSMessagingOperation.operation incoming"));
+        LOGGER.fine(() -> String.format("JMSMessagingChannel.channel incoming"));
         CompletableFuture<Message> queryFuture = new CompletableFuture<>();
-        CompletableFuture<Void> operationFuture = new CompletableFuture<>();
+        CompletableFuture<Void> channelFuture = new CompletableFuture<>();
         MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
                 .resultFuture(queryFuture)
-                .operationFuture(operationFuture);
+                .channelFuture(channelFuture);
         update(messagingContext);
         CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingContext);
-        return doIncoming(messagingContextFuture, operationFuture, queryFuture);
+        return doIncoming(messagingContextFuture, channelFuture, queryFuture);
     }
 
     protected CompletionStage<Message> doIncoming(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
-                                                  CompletableFuture<Void> operationFuture,
+                                                  CompletableFuture<Void> channelFuture,
                                                   CompletableFuture<Message> queryFuture) {
-        System.out.println("JMSMessagingOperation.doIncoming");
-        // query and operation future must always complete either OK, or exceptionally
+        System.out.println("JMSMessagingChannel.doIncoming");
+        // query and channel future must always complete either OK, or exceptionally
         messagingContextFuture.exceptionally(throwable -> {
-            operationFuture.completeExceptionally(throwable);
+            channelFuture.completeExceptionally(throwable);
             queryFuture.completeExceptionally(throwable);
             return null;
         });
         return messagingContextFuture.thenCompose(messagingContext -> {
             executorService.submit(() -> {
-                operationFuture.complete(null);
+                channelFuture.complete(null);
                 queryFuture.complete(
                         new JMSMessage(receiveMessages(config.queue(), config.messagetype())));
             });
@@ -76,19 +76,19 @@ public class JMSMessagingOperation implements MessagingOperation {
             queue = session.createQueue(queueName);
             MessageConsumer consumer = session.createReceiver(queue);
             connection.start();
-            System.out.println("operation before receive queue:" + queue);
+            System.out.println("channel before receive queue:" + queue);
             msg = consumer.receive();
-            System.out.println("operation message:" + msg);
+            System.out.println("channel message:" + msg);
             String action = "";
             String messageTxt = "";
             if (messageType.equals("text")) {
                 TextMessage message = (TextMessage)msg;
                 messageTxt = message.getText();
-                System.out.println("operation message (null may be expected):" + messageTxt);
+                System.out.println("channel message (null may be expected):" + messageTxt);
                 action = message.getStringProperty("action");
-                System.out.println("operation message action:" + action);
+                System.out.println("channel message action:" + action);
                 int orderid = message.getIntProperty("orderid");
-                System.out.println("operation message orderid:" + orderid);
+                System.out.println("channel message orderid:" + orderid);
             }
             else if (messageType.equals("map")){
                 MapMessage mapmsg = (MapMessage) msg;
@@ -99,7 +99,7 @@ public class JMSMessagingOperation implements MessagingOperation {
                 System.out.println("----->" + mapmsg.getStringProperty("action"));
                 System.out.println("----->" + mapmsg.getString("action"));
                 System.out.println("----->" + mapmsg.getString("x-request-id"));
-            } else throw new Exception("operation unknown message type:" + messageType);
+            } else throw new Exception("channel unknown message type:" + messageType);
             session.commit();
             session.close();
             connection.close();
@@ -129,31 +129,31 @@ public class JMSMessagingOperation implements MessagingOperation {
 
 
     @Override
-    public CompletionStage<Message> outgoing(MessageProcessor testMessageProcessor) {
-        LOGGER.fine(() -> String.format("JMSMessagingOperation.operation incoming"));
+    public CompletionStage<Message> outgoing(MessageProcessor testMessageProcessor, Message message) {
+        LOGGER.fine(() -> String.format("JMSMessagingChannel.channel incoming"));
         CompletableFuture<Message> queryFuture = new CompletableFuture<>();
-        CompletableFuture<Void> operationFuture = new CompletableFuture<>();
+        CompletableFuture<Void> channelFuture = new CompletableFuture<>();
         MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
                 .resultFuture(queryFuture)
-                .operationFuture(operationFuture);
+                .channelFuture(channelFuture);
         update(messagingContext);
         CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingContext);
-        return doOutgoing(messagingContextFuture, operationFuture, queryFuture);
+        return doOutgoing(messagingContextFuture, channelFuture, queryFuture);
     }
 
     protected CompletionStage<Message> doOutgoing(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
-                                                  CompletableFuture<Void> operationFuture,
+                                                  CompletableFuture<Void> channelFuture,
                                                   CompletableFuture<Message> queryFuture) {
-        System.out.println("JMSMessagingOperation.doOutgoing");
-        // query and operation future must always complete either OK, or exceptionally
+        System.out.println("JMSMessagingChannel.doOutgoing");
+        // query and channel future must always complete either OK, or exceptionally
         messagingContextFuture.exceptionally(throwable -> {
-            operationFuture.completeExceptionally(throwable);
+            channelFuture.completeExceptionally(throwable);
             queryFuture.completeExceptionally(throwable);
             return null;
         });
         return messagingContextFuture.thenCompose(messagingContext -> {
             executorService.submit(() -> {
-                operationFuture.complete(null);
+                channelFuture.complete(null);
                 queryFuture.complete(
                         new JMSMessage(sendMessage(config.queue(), config.messagetype())));
             });
@@ -203,38 +203,38 @@ public class JMSMessagingOperation implements MessagingOperation {
 
         messagingContext.context(Contexts.context().orElseGet(Context::create));
 
-        for (MessagingInterceptor interceptor : interceptors.interceptors(operationType(), operationName())) {
-            result = result.thenCompose(interceptor::operation);
+        for (MessagingInterceptor interceptor : interceptors.interceptors(channelType(), channelName())) {
+            result = result.thenCompose(interceptor::channel);
         }
 
         return result;
     }
 
-    private MessagingOperationType operationType() {
-        return operationType;
+    private MessagingChannelType channelType() {
+        return channelType;
     }
 
-    private String operationName() {
-        return operationName;
+    private String channelName() {
+        return channelName;
     }
 
 
     /**
-     * Update the interceptor context with the operation name, operation and
-     * operation parameters.
+     * Update the interceptor context with the channel name, channel and
+     * channel parameters.
      *
      * @param messagingContext interceptor context
      */
     protected void update(MessagingInterceptorContext messagingContext) {
-        messagingContext.operationName(operationName);
+        messagingContext.channelName(channelName);
 //        initParameters(ParamType.INDEXED);
 //
 //        if (paramType == ParamType.NAMED) {
-//            messagingContext.operation(operation, parameters.namedParams());
+//            messagingContext.channel(channel, parameters.namedParams());
 //        } else {
-//            messagingContext.operation(operation, parameters.indexedParams());
+//            messagingContext.channel(channel, parameters.indexedParams());
 //        }
-//        messagingContext.operationType(operationType());
+//        messagingContext.channelType(channelType());
     }
 
 
