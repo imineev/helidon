@@ -1,8 +1,8 @@
 package io.helidon.messagingclient.jms;
 
-import io.helidon.messagingclient.Message;
+import io.helidon.messagingclient.HelidonMessage;
 
-public class JMSMessage implements Message {
+public class JMSMessage implements HelidonMessage {
     private Object string;
 
     public JMSMessage(Object string) {

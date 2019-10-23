@@ -4,8 +4,8 @@ import java.util.concurrent.CompletionStage;
 
 public interface MessagingChannel<D, R> {
 
-    CompletionStage<Message> incoming(MessageProcessor testMessageProcessor);
+    CompletionStage<HelidonMessage> incoming(MessageProcessor testMessageProcessor);
 
-    CompletionStage<Message> outgoing(MessageProcessor testMessageProcessor, Message message);
+    CompletionStage<HelidonMessage> outgoing(MessageProcessor testMessageProcessor, HelidonMessage message);
 
 }

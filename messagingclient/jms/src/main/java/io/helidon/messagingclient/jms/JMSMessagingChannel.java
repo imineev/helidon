@@ -3,7 +3,7 @@ package io.helidon.messagingclient.jms;
 import io.helidon.common.context.Context;
 import io.helidon.common.context.Contexts;
 import io.helidon.messagingclient.*;
-import io.helidon.messagingclient.Message;
+import io.helidon.messagingclient.HelidonMessage;
 import io.helidon.messagingclient.common.InterceptorSupport;
 import javax.jms.*;
 import javax.jms.Session;
@@ -33,9 +33,9 @@ public class JMSMessagingChannel implements MessagingChannel {
     }
 
 
-    public CompletionStage<Message> incoming(MessageProcessor testMessageProcessor) {
+    public CompletionStage<HelidonMessage> incoming(MessageProcessor testMessageProcessor) {
         LOGGER.fine(() -> String.format("JMSMessagingChannel.channel incoming"));
-        CompletableFuture<Message> queryFuture = new CompletableFuture<>();
+        CompletableFuture<HelidonMessage> queryFuture = new CompletableFuture<>();
         CompletableFuture<Void> channelFuture = new CompletableFuture<>();
         MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
                 .resultFuture(queryFuture)
@@ -45,9 +45,10 @@ public class JMSMessagingChannel implements MessagingChannel {
         return doIncoming(messagingContextFuture, channelFuture, queryFuture);
     }
 
-    protected CompletionStage<Message> doIncoming(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
-                                                  CompletableFuture<Void> channelFuture,
-                                                  CompletableFuture<Message> queryFuture) {
+
+    protected CompletionStage<HelidonMessage> doIncoming(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
+                                                         CompletableFuture<Void> channelFuture,
+                                                         CompletableFuture<HelidonMessage> queryFuture) {
         System.out.println("JMSMessagingChannel.doIncoming");
         // query and channel future must always complete either OK, or exceptionally
         messagingContextFuture.exceptionally(throwable -> {
@@ -65,6 +66,7 @@ public class JMSMessagingChannel implements MessagingChannel {
         });
     }
 
+    // todo this/future processing is incomplete...
     public Object receiveMessages(String queueName, String messageType) {
         QueueConnection connection = null;
         javax.jms.Queue queue;
@@ -129,9 +131,9 @@ public class JMSMessagingChannel implements MessagingChannel {
 
 
     @Override
-    public CompletionStage<Message> outgoing(MessageProcessor testMessageProcessor, Message message) {
+    public CompletionStage<HelidonMessage> outgoing(MessageProcessor testMessageProcessor, HelidonMessage message) {
         LOGGER.fine(() -> String.format("JMSMessagingChannel.channel incoming"));
-        CompletableFuture<Message> queryFuture = new CompletableFuture<>();
+        CompletableFuture<HelidonMessage> queryFuture = new CompletableFuture<>();
         CompletableFuture<Void> channelFuture = new CompletableFuture<>();
         MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
                 .resultFuture(queryFuture)
@@ -141,9 +143,9 @@ public class JMSMessagingChannel implements MessagingChannel {
         return doOutgoing(messagingContextFuture, channelFuture, queryFuture);
     }
 
-    protected CompletionStage<Message> doOutgoing(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
-                                                  CompletableFuture<Void> channelFuture,
-                                                  CompletableFuture<Message> queryFuture) {
+    protected CompletionStage<HelidonMessage> doOutgoing(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
+                                                         CompletableFuture<Void> channelFuture,
+                                                         CompletableFuture<HelidonMessage> queryFuture) {
         System.out.println("JMSMessagingChannel.doOutgoing");
         // query and channel future must always complete either OK, or exceptionally
         messagingContextFuture.exceptionally(throwable -> {

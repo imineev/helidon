@@ -52,9 +52,9 @@ public class KafkaMessagingChannel implements MessagingChannel {
         this.filter = filter;
     }
 
-    public CompletionStage<Message> incoming(MessageProcessor messageProcessor) {
+    public CompletionStage<HelidonMessage> incoming(MessageProcessor messageProcessor) {
         LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel incoming"));
-        CompletableFuture<Message> queryFuture = new CompletableFuture<>();
+        CompletableFuture<HelidonMessage> queryFuture = new CompletableFuture<>();
         CompletableFuture<Void> channelFuture = new CompletableFuture<>();
         MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
                 .resultFuture(queryFuture)
@@ -95,7 +95,7 @@ public class KafkaMessagingChannel implements MessagingChannel {
                     record.key(),
                     record.value());
             System.out.println("KafkaMessagingChannel.incoming record.value():"+record.value());
-            Message message = new KafkaMessage(record.value());
+            HelidonMessage message = new KafkaMessage(record.value());
             messageProcessor.processMessage(message);
             channelFuture.complete(null);
             queryFuture.complete(message);
@@ -112,11 +112,11 @@ public class KafkaMessagingChannel implements MessagingChannel {
         return queryFuture;
     }
 
-    public CompletionStage<Message> outgoing(MessageProcessor messageProcessor, Message kafkamessage) {
+    public CompletionStage<HelidonMessage> outgoing(MessageProcessor messageProcessor, HelidonMessage kafkamessage) {
         System.out.println("KafkaMessagingChannel.channel outgoing");
         LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel outgoing"));
 
-        CompletableFuture<Message> queryFuture = new CompletableFuture<>();
+        CompletableFuture<HelidonMessage> queryFuture = new CompletableFuture<>();
         CompletableFuture<Void> channelFuture = new CompletableFuture<>();
         MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
                 .resultFuture(queryFuture)
@@ -145,7 +145,7 @@ public class KafkaMessagingChannel implements MessagingChannel {
                 .doOnError(e -> System.out.println("Send failed:" + e))
                 .subscribe(r -> {
                     RecordMetadata metadata = r.recordMetadata();
-                    System.out.printf("Message %d sent successfully, topic-partition=%s-%d offset=%d timestamp=%s\n",
+                    System.out.printf("HelidonMessage %d sent successfully, topic-partition=%s-%d offset=%d timestamp=%s\n",
                             r.correlationMetadata(),
                             metadata.topic(),
                             metadata.partition(),
@@ -220,9 +220,9 @@ public class KafkaMessagingChannel implements MessagingChannel {
 
 
 
-    public CompletionStage<Message> incomingExecutor(MessageProcessor messageProcessor) {
+    public CompletionStage<HelidonMessage> incomingExecutor(MessageProcessor messageProcessor) {
         LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel incoming"));
-        CompletableFuture<Message> queryFuture = new CompletableFuture<>();
+        CompletableFuture<HelidonMessage> queryFuture = new CompletableFuture<>();
         CompletableFuture<Void> channelFuture = new CompletableFuture<>();
         MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
                 .resultFuture(queryFuture)
@@ -232,10 +232,10 @@ public class KafkaMessagingChannel implements MessagingChannel {
         return doIncomingExecutor(messagingContextFuture, channelFuture, queryFuture, messageProcessor);
     }
 
-    protected CompletionStage<Message> doIncomingExecutor(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
-                                                          CompletableFuture<Void> channelFuture,
-                                                          CompletableFuture<Message> queryFuture,
-                                                          MessageProcessor messageProcessor) {
+    protected CompletionStage<HelidonMessage> doIncomingExecutor(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
+                                                                 CompletableFuture<Void> channelFuture,
+                                                                 CompletableFuture<HelidonMessage> queryFuture,
+                                                                 MessageProcessor messageProcessor) {
         System.out.println("KafkaMessagingChannel.doIncoming");
         messagingContextFuture.exceptionally(throwable -> {
             channelFuture.completeExceptionally(throwable);
@@ -286,9 +286,9 @@ public class KafkaMessagingChannel implements MessagingChannel {
         return consumer;
     }
 
-    public CompletionStage<Message> outgoingExecutor(MessageProcessor messageProcessor) {
+    public CompletionStage<HelidonMessage> outgoingExecutor(MessageProcessor messageProcessor) {
         LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel outgoing"));
-        CompletableFuture<Message> queryFuture = new CompletableFuture<>();
+        CompletableFuture<HelidonMessage> queryFuture = new CompletableFuture<>();
         CompletableFuture<Void> channelFuture = new CompletableFuture<>();
         MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
                 .resultFuture(queryFuture)
@@ -298,10 +298,10 @@ public class KafkaMessagingChannel implements MessagingChannel {
         return doOutgoingExecutor(messagingContextFuture, channelFuture, queryFuture, messageProcessor);
     }
 
-    protected CompletionStage<Message> doOutgoingExecutor(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
-                                                          CompletableFuture<Void> channelFuture,
-                                                          CompletableFuture<Message> queryFuture,
-                                                          MessageProcessor messageProcessor) {
+    protected CompletionStage<HelidonMessage> doOutgoingExecutor(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
+                                                                 CompletableFuture<Void> channelFuture,
+                                                                 CompletableFuture<HelidonMessage> queryFuture,
+                                                                 MessageProcessor messageProcessor) {
         System.out.println("KafkaMessagingChannel.doOutgoing");
         // query and channel future must always complete either OK, or exceptionally
         messagingContextFuture.exceptionally(throwable -> {

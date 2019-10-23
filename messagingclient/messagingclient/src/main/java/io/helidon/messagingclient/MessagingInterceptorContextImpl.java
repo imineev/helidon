@@ -31,7 +31,7 @@ class MessagingInterceptorContextImpl implements MessagingInterceptorContext {
     private String channelName;
     private String channel;
     private CompletionStage<Void> channelFuture;
-    private CompletionStage<Message> queryFuture;
+    private CompletionStage<HelidonMessage> queryFuture;
     private List<Object> indexedParams;
     private Map<String, Object> namedParams;
     private boolean indexed;
@@ -110,12 +110,12 @@ class MessagingInterceptorContextImpl implements MessagingInterceptorContext {
     }
 
     @Override
-    public CompletionStage<Message> resultFuture() {
+    public CompletionStage<HelidonMessage> resultFuture() {
         return queryFuture;
     }
 
     @Override
-    public MessagingInterceptorContext resultFuture(CompletionStage<Message> resultFuture) {
+    public MessagingInterceptorContext resultFuture(CompletionStage<HelidonMessage> resultFuture) {
         this.queryFuture = resultFuture;
         return this;
     }

@@ -63,19 +63,19 @@ public class PokemonService implements Service {
 
     class TestMessageProcessorIncoming implements MessageProcessor {
         @Override
-        public Object processMessage(Message message) {
+        public Object processMessage(HelidonMessage message) {
             return processMessage(null, message);
         }
 
         @Override
-        public Object processMessage(Session session, Message message) {
+        public Object processMessage(Session session, HelidonMessage message) {
             System.out.println("TestMessageProcessor.processMessage session:" + session + " message:" + message);
             //todo insert db row, etc.
             return message + "sent";
         }
     }
 
-    private void postProcessMessage(ServerResponse response, Message messageReceived) {
+    private void postProcessMessage(ServerResponse response, HelidonMessage messageReceived) {
         System.out.println("PokemonService.processMessage messageReceived.getString():" + messageReceived.getString());
         response.send("received message: " + messageReceived.getString());
     }
@@ -93,12 +93,12 @@ public class PokemonService implements Service {
 
     class TestMessageProcessorOutgoing implements MessageProcessor {
         @Override
-        public Object processMessage(Message message) {
+        public Object processMessage(HelidonMessage message) {
             return processMessage(null, message);
         }
 
         @Override
-        public Object processMessage(Session session, Message message) {
+        public Object processMessage(Session session, HelidonMessage message) {
             System.out.println("TestMessageProcessor.processMessage session:" + session + " message:" + message);
             //todo insert db row, etc.
             return message + "sent";

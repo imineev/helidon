@@ -22,7 +22,6 @@ import java.util.logging.Logger;
 
 import io.helidon.common.http.Http;
 import io.helidon.messagingclient.*;
-import io.helidon.webserver.Handler;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
@@ -41,19 +40,20 @@ public class PokemonService implements Service {
 
     @Override
     public void update(Routing.Rules rules) {
-        rules.get("/", this::listenForMessagesGET)
-                .post("/", Handler.create(Pokemon.class, this::listenForMessages))
-                .get("/{name}", this::sendMessages);
+        rules.get("/", this::noop)
+//                .post("/", Handler.create(Pokemon.class, this::listenForMessagesPOST))
+                .get("/outgoing", this::outgoing)
+                .get("/incoming", this::incoming)
+                .get("/incomingoutgoing", this::incomingoutgoing);
     }
 
-    private void listenForMessagesGET(ServerRequest request, ServerResponse response) {
-        System.out.println("listenForMessagesGET");
-        listenForMessages(request, response, null);
+
+    private void noop(ServerRequest request, ServerResponse response) {
+        System.out.println("options: outgoing, incoming, incomingoutgoing, ..");
     }
 
-    //
-    private void listenForMessages(ServerRequest request, ServerResponse response, Pokemon pokemon) {
-        System.out.println("listenForMessages");
+    private void incoming(ServerRequest request, ServerResponse response) {
+        System.out.println("incoming");
         messagingClient.channel(exec -> exec
                 .filterForEndpoint("kafkasubscribewithpattern")//todo get from config/pokemon subscribe(java.util.regex.Pattern
                 .incoming(new TestMessageProcessorIncoming()))
@@ -63,34 +63,26 @@ public class PokemonService implements Service {
 
     class TestMessageProcessorIncoming implements MessageProcessor {
         @Override
-        public Object processMessage(Message message) {
+        public Object processMessage(HelidonMessage message) {
             return processMessage(null, message);
         }
 
         @Override
-        public Object processMessage(Session session, Message message) {
-            System.out.println("TestMessageProcessor.processMessage session:" + session + " message:" + message);
+        public Object processMessage(Session session, HelidonMessage message) {
+            System.out.println("TestMessageProcessorIncoming.processMessage session:" + session + " message:" + message);
             //todo insert db row, etc.
             return message + "sent";
         }
     }
 
-    private void postSendProcessMessage(ServerResponse response, Message messageReceived) {
-        System.out.println("PokemonService.postSendProcessMessage messageReceived.getString():" + messageReceived.getString());
-        response.send("received message: " + messageReceived.getString());
-    }
 
-    private void postRecieveProcessMessage(ServerResponse response, Message messageReceived) {
-        System.out.println("PokemonService.postRecieveProcessMessage messageReceived.getString():" + messageReceived.getString());
-        response.send("received message: " + messageReceived.getString());
-    }
 
-    private void sendMessages(ServerRequest request, ServerResponse response) {
-        System.out.println("sendMessages/send message via producer");
-        String message = "test messaging";
+    private void outgoing(ServerRequest request, ServerResponse response) {
+        System.out.println("outgoing/send message via producer");
+        String message = "kafkatest messaging";
         messagingClient.channel(exec -> exec
                 .filterForEndpoint("kafkasubscribewithpattern")//todo get from config/pokemon subscribe(java.util.regex.Pattern
-                .outgoing(new TestMessageProcessorOutgoing(), () -> "kafka test message"))
+                .outgoing(new TestMessageProcessorOutgoing(), () -> message))
                 .thenAccept(messageReceived -> postSendProcessMessage(response, messageReceived))
                 .exceptionally(throwable -> sendError(throwable, response));
         response.send(" message sent:" + message);
@@ -98,19 +90,75 @@ public class PokemonService implements Service {
 
     class TestMessageProcessorOutgoing implements MessageProcessor {
         @Override
-        public Object processMessage(Message message) {
+        public Object processMessage(HelidonMessage message) {
             return processMessage(null, message);
         }
 
         @Override
-        public Object processMessage(Session session, Message message) {
-            System.out.println("TestMessageProcessor.processMessage session:" + session + " message:" + message);
+        public Object processMessage(Session session, HelidonMessage message) {
+            System.out.println("TestMessageProcessorOutgoing.processMessage session:" + session + " message:" + message);
             //todo insert db row, etc.
             return message + "sent";
         }
     }
 
 
+
+
+
+    private void incomingoutgoing(ServerRequest request, ServerResponse response) {
+        System.out.println("incomingoutgoing...");
+        String outgoingmessaging = "kafkatest outgoing messaging resulting/translating from incoming message";
+        messagingClient.channel(exec -> exec
+                .filterForEndpoint("kafkasubscribewithpattern")//todo get from config/pokemon subscribe(java.util.regex.Pattern
+                .incoming(new TestMessageProcessorIncomingOutgoing(response, outgoingmessaging)))
+                .thenAccept(messageReceived -> postRecieveProcessMessage(response, messageReceived))
+                .exceptionally(throwable -> sendError(throwable, response));
+        response.send("message received and message sent:" + outgoingmessaging);
+    }
+
+
+    class TestMessageProcessorIncomingOutgoing implements MessageProcessor {
+        ServerResponse response;
+        String outgoingmessage;
+        public TestMessageProcessorIncomingOutgoing(ServerResponse response, String outgoingmessage) {
+            this.response = response;
+            this.outgoingmessage = outgoingmessage;
+        }
+
+        @Override
+        public Object processMessage(HelidonMessage message) {
+            return processMessage(null, message);
+        }
+
+        @Override
+        public Object processMessage(Session session, HelidonMessage message) {
+            System.out.println("TestMessageProcessorIncomingOutgoing.processMessage session:" + session + " message:" + message);
+            //todo insert db row, etc.
+            messagingClient.channel(exec -> exec
+                    .filterForEndpoint("kafkasubscribewithpattern")//todo get from config/pokemon subscribe(java.util.regex.Pattern
+                    .outgoing(new TestMessageProcessorOutgoing(), () -> outgoingmessage))
+                    .thenAccept(outgoingMessage -> postSendProcessMessage(response, outgoingMessage))
+                    .exceptionally(throwable -> sendError(throwable, response));
+            response.send("sent message: " + outgoingmessage);
+
+            return message + "sent";
+        }
+    }
+
+
+
+
+
+    private void postSendProcessMessage(ServerResponse response, HelidonMessage messageReceived) {
+        System.out.println("PokemonService.postSendProcessMessage messageReceived.getString():" + messageReceived.getString());
+        response.send("received message: " + messageReceived.getString());
+    }
+
+    private void postRecieveProcessMessage(ServerResponse response, HelidonMessage messageReceived) {
+        System.out.println("PokemonService.postRecieveProcessMessage messageReceived.getString():" + messageReceived.getString());
+        response.send("received message: " + messageReceived.getString());
+    }
 
     private Void sendError(final Throwable throwable, ServerResponse response) {
         Throwable toLog = throwable;

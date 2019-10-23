@@ -82,7 +82,7 @@ public interface MessagingInterceptorContext {
      *
      * @return stage that completes once all query results were processed.
      */
-    CompletionStage<Message> resultFuture();
+    CompletionStage<HelidonMessage> resultFuture();
 
     /**
      * Indexed parameters (if used).
@@ -142,7 +142,7 @@ public interface MessagingInterceptorContext {
      * @param queryFuture future
      * @return updated interceptor context
      */
-    MessagingInterceptorContext resultFuture(CompletionStage<Message> queryFuture);
+    MessagingInterceptorContext resultFuture(CompletionStage<HelidonMessage> queryFuture);
 
     /**
      * Set a new channel with indexed parameters to be used.
