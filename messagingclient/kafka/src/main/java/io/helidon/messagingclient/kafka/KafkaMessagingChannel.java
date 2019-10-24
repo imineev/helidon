@@ -53,6 +53,10 @@ public class KafkaMessagingChannel implements MessagingChannel {
     }
 
     public CompletionStage<HelidonMessage> incoming(MessageProcessor messageProcessor) {
+        return incoming(messageProcessor, false);
+    }
+
+    public CompletionStage<HelidonMessage> incoming(MessageProcessor messageProcessor, boolean isCloseSession) {
         LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel incoming"));
         CompletableFuture<HelidonMessage> queryFuture = new CompletableFuture<>();
         CompletableFuture<Void> channelFuture = new CompletableFuture<>();
@@ -112,7 +116,16 @@ public class KafkaMessagingChannel implements MessagingChannel {
         return queryFuture;
     }
 
-    public CompletionStage<HelidonMessage> outgoing(MessageProcessor messageProcessor, HelidonMessage kafkamessage) {
+
+    @Override
+    public CompletionStage<HelidonMessage> outgoing(
+            MessageProcessor messageProcessor, HelidonMessage message) {
+        return outgoing(messageProcessor, message, null, null);
+    }
+
+    @Override
+    public CompletionStage<HelidonMessage> outgoing(
+            MessageProcessor messageProcessor, HelidonMessage kafkamessage, Object session, String queueName) {
         System.out.println("KafkaMessagingChannel.channel outgoing");
         LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel outgoing"));
 

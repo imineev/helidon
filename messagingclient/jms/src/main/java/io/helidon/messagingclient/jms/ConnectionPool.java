@@ -10,6 +10,18 @@ import java.lang.reflect.Constructor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import oracle.AQ.AQQueueTable;
+import oracle.AQ.AQQueueTableProperty;
+import oracle.jms.AQjmsDestinationProperty;
+import oracle.jms.AQjmsFactory;
+import oracle.jms.AQjmsSession;
+import oracle.jdbc.pool.OracleDataSource;
+
+import javax.jms.JMSException;
+import javax.jms.QueueConnection;
+import javax.jms.QueueConnectionFactory;
+import javax.sql.DataSource;
+
 public interface ConnectionPool {
 
     static ConnectionPool create(Config config) {
@@ -20,6 +32,7 @@ public interface ConnectionPool {
 
     /**
      * Create a fluent API builder for a JDBC Connection pool based on URL, username and password.
+     *
      * @return a new builder
      */
     static Builder builder() {
@@ -46,7 +59,6 @@ public interface ConnectionPool {
 
 
     final class Builder implements io.helidon.common.Builder<ConnectionPool> {
-        //jmessagingc:mysql://127.0.0.1:3306/pokemon?useSSL=false
         private static final Pattern URL_PATTERN = Pattern.compile("(\\w+:\\w+):.*");
         private String url;
         private String username;
@@ -57,10 +69,6 @@ public interface ConnectionPool {
 
         @Override
         public ConnectionPool build() {
-//        public ConnectionPool build() {
-            final String url = this.url;
-            final String username = this.username;
-            final String password = this.password;
 
             Matcher matcher = URL_PATTERN.matcher(url);
             String messagingType;
@@ -69,33 +77,44 @@ public interface ConnectionPool {
             } else {
                 messagingType = JMSMessagingClientProvider.MESSAGING_TYPE;
             }
-            return new ConnectionPool() {
+            return getConnectionPool();
+        }
 
-                QueueConnectionFactory getQueueConnectionFactory() {
-/**
-                    Constructor constructor = OracleDataSource.class.getConstructor(String.class);
-//                    DataSource datasource = (DataSource)constructor.newInstance(url, user, pw;
-                    OracleDataSource datasource = (OracleDataSource)constructor.newInstance();
-                    datasource.setURL...
-                    return AQjmsFactory.getQueueConnectionFactory(dataSource); //todo paul
- */
-return null;
-                }
-
-                @Override
-                public QueueConnection connection() {
-                    try {
-                        return getQueueConnectionFactory().createQueueConnection();
-                    } catch (JMSException e) {
-                        throw new MessagingClientException("Failed to create a connection to " + url, e);
+        private ConnectionPool getConnectionPool()  {
+            try {
+                OracleDataSource aqDataSource = new oracle.jdbc.pool.OracleDataSource();
+                aqDataSource.setURL(url);
+                aqDataSource.setUser(username);
+                aqDataSource.setPassword(password);
+                System.out.println("JMSMessagingClientProviderBuilder.setConnectionPool " +
+                        " for url:" + url + " username:" + username + " password:" + password +
+                        " aqDataSource:" + aqDataSource);
+                QueueConnectionFactory qcf = AQjmsFactory.getQueueConnectionFactory(aqDataSource);
+                System.out.println("JMSMessagingClientProviderBuilder.setConnectionPool " +
+                        "qcf:" + qcf);
+                ConnectionPool connectionPool = new ConnectionPool() {
+                    @Override
+                    public QueueConnection connection() {
+                        try {
+                            return qcf.createQueueConnection();
+                        } catch (JMSException e) {
+                            e.printStackTrace();
+                            return null; //todo throw messaging exception
+                        }
                     }
-                }
 
-                @Override
-                public String messagingType() {
-                    return messagingType;
-                }
-            };
+                    @Override
+                    public String messagingType() {
+                        return "AQJMS-queue";
+                    }
+                };
+                System.out.println("JMSMessagingClientProviderBuilder.setConnectionPool " +
+                        "connectionPool.connection():" + connectionPool.connection());
+                return connectionPool;
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                return null;
+            }
         }
 
         public Builder config(Config config) {

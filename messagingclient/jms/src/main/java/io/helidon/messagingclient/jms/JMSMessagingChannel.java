@@ -33,22 +33,20 @@ public class JMSMessagingChannel implements MessagingChannel {
     }
 
 
-    public CompletionStage<HelidonMessage> incoming(MessageProcessor testMessageProcessor) {
+    public CompletionStage<HelidonMessage> incoming(MessageProcessor messageProcessor) {
+        return incoming(messageProcessor, true);
+    }
+
+    public CompletionStage<HelidonMessage> incoming(
+            MessageProcessor messageProcessor, boolean isCloseSession) {
         LOGGER.fine(() -> String.format("JMSMessagingChannel.channel incoming"));
         CompletableFuture<HelidonMessage> queryFuture = new CompletableFuture<>();
         CompletableFuture<Void> channelFuture = new CompletableFuture<>();
-        MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
+        MessagingInterceptorContext messagingInterceptorContextContext = MessagingInterceptorContext.create(messagingType())
                 .resultFuture(queryFuture)
                 .channelFuture(channelFuture);
-        update(messagingContext);
-        CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingContext);
-        return doIncoming(messagingContextFuture, channelFuture, queryFuture);
-    }
-
-
-    protected CompletionStage<HelidonMessage> doIncoming(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
-                                                         CompletableFuture<Void> channelFuture,
-                                                         CompletableFuture<HelidonMessage> queryFuture) {
+        update(messagingInterceptorContextContext);
+        CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingInterceptorContextContext);
         System.out.println("JMSMessagingChannel.doIncoming");
         // query and channel future must always complete either OK, or exceptionally
         messagingContextFuture.exceptionally(throwable -> {
@@ -60,14 +58,16 @@ public class JMSMessagingChannel implements MessagingChannel {
             executorService.submit(() -> {
                 channelFuture.complete(null);
                 queryFuture.complete(
-                        new JMSMessage(receiveMessages(config.queue(), config.messagetype())));
+                        new JMSMessage(receiveMessages(messageProcessor, config.queue(), config.messagetype(), isCloseSession)));
             });
             return queryFuture;
         });
     }
 
-    // todo this/future processing is incomplete...
-    public Object receiveMessages(String queueName, String messageType) {
+    //todo currently only processes one, ie doesnt use numberofmessages config
+    public Object receiveMessages(MessageProcessor testMessageProcessor, String queueName, String messageType, boolean isCloseSession) {
+        System.out.println("JMSMessagingChannel.receiveMessages " + " connectionPool:" + connectionPool +
+                "queueName:" + queueName + " messageType:" + messageType ) ;
         QueueConnection connection = null;
         javax.jms.Queue queue;
         QueueSession session =null;
@@ -77,35 +77,27 @@ public class JMSMessagingChannel implements MessagingChannel {
             session = connection.createQueueSession(true, Session.CLIENT_ACKNOWLEDGE);
             queue = session.createQueue(queueName);
             MessageConsumer consumer = session.createReceiver(queue);
+            //todo allow these to be added
+            consumer.setMessageListener(message -> System.out.println( "test message listener message:" + message));
             connection.start();
-            System.out.println("channel before receive queue:" + queue);
+            System.out.println("--->channel before receive queue:" + queue);
             msg = consumer.receive();
-            System.out.println("channel message:" + msg);
-            String action = "";
-            String messageTxt = "";
-            if (messageType.equals("text")) {
-                TextMessage message = (TextMessage)msg;
-                messageTxt = message.getText();
-                System.out.println("channel message (null may be expected):" + messageTxt);
-                action = message.getStringProperty("action");
-                System.out.println("channel message action:" + action);
-                int orderid = message.getIntProperty("orderid");
-                System.out.println("channel message orderid:" + orderid);
+            System.out.println("JMSMessagingChannel.receiveMessages channel msg.getJMSType():" + msg.getJMSType());
+            System.out.println("JMSMessagingChannel.receiveMessages channel msg:" + msg);
+            System.out.println("JMSMessagingChannel.receiveMessages channel message:" + ((TextMessage)msg).getText()); //todo assumed txt message
+            testMessageProcessor.processMessage(session, new HelidonMessage() {
+                @Override
+                public String getString() {
+                    return msg.toString();
+                }
+            });
+            System.out.println("JMSMessagingChannel.receiveMessages isCloseSession:" + isCloseSession);
+            if (isCloseSession) {
+                session.commit();
+                session.close();
+                connection.close();
             }
-            else if (messageType.equals("map")){
-                MapMessage mapmsg = (MapMessage) msg;
-                System.out.println("----->" + mapmsg.getStringProperty("orderid"));
-                System.out.println("----->" + mapmsg.getString("orderid"));
-                System.out.println("----->" + mapmsg.getStringProperty("service"));
-                System.out.println("----->" + mapmsg.getString("service"));
-                System.out.println("----->" + mapmsg.getStringProperty("action"));
-                System.out.println("----->" + mapmsg.getString("action"));
-                System.out.println("----->" + mapmsg.getString("x-request-id"));
-            } else throw new Exception("channel unknown message type:" + messageType);
-            session.commit();
-            session.close();
-            connection.close();
-            return action;
+            return msg;
         } catch (Exception e) {
             e.printStackTrace();
             try {
@@ -114,39 +106,43 @@ public class JMSMessagingChannel implements MessagingChannel {
                 e1.printStackTrace();
             }
         } finally {
-            try {
-                if (session != null) {
-                    session.close();
+            if (isCloseSession) {
+                try {
+                    if (session != null) {
+                        session.close();
+                    }
+                    if (connection != null) {
+                        connection.close();
+                    }
+                } catch (JMSException e) {
+                    e.printStackTrace();
                 }
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (JMSException e) {
-                e.printStackTrace();
             }
         }
-        return null;
+        return messageType; //todo just returns messageType currently
     }
 
 
 
     @Override
-    public CompletionStage<HelidonMessage> outgoing(MessageProcessor testMessageProcessor, HelidonMessage message) {
-        LOGGER.fine(() -> String.format("JMSMessagingChannel.channel incoming"));
-        CompletableFuture<HelidonMessage> queryFuture = new CompletableFuture<>();
-        CompletableFuture<Void> channelFuture = new CompletableFuture<>();
-        MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
-                .resultFuture(queryFuture)
-                .channelFuture(channelFuture);
-        update(messagingContext);
-        CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingContext);
-        return doOutgoing(messagingContextFuture, channelFuture, queryFuture);
+    public CompletionStage<HelidonMessage> outgoing(
+            MessageProcessor messageProcessor, HelidonMessage message) {
+        return outgoing(messageProcessor, message, null, null);
     }
 
-    protected CompletionStage<HelidonMessage> doOutgoing(CompletionStage<MessagingInterceptorContext> messagingContextFuture,
-                                                         CompletableFuture<Void> channelFuture,
-                                                         CompletableFuture<HelidonMessage> queryFuture) {
-        System.out.println("JMSMessagingChannel.doOutgoing");
+    @Override
+    public CompletionStage<HelidonMessage> outgoing(
+            MessageProcessor messageProcessor, HelidonMessage message, Object session, String queueName) {
+        LOGGER.fine(() -> String.format("JMSMessagingChannel.channel outgoing"));
+        CompletableFuture<HelidonMessage> queryFuture = new CompletableFuture<>();
+        CompletableFuture<Void> channelFuture = new CompletableFuture<>();
+        MessagingInterceptorContext messagingInterceptorContextContext =
+                MessagingInterceptorContext.create(messagingType())
+                .resultFuture(queryFuture)
+                .channelFuture(channelFuture);
+        update(messagingInterceptorContextContext);
+        CompletionStage<MessagingInterceptorContext> messagingContextFuture =
+                invokeInterceptors(messagingInterceptorContextContext);
         // query and channel future must always complete either OK, or exceptionally
         messagingContextFuture.exceptionally(throwable -> {
             channelFuture.completeExceptionally(throwable);
@@ -157,28 +153,35 @@ public class JMSMessagingChannel implements MessagingChannel {
             executorService.submit(() -> {
                 channelFuture.complete(null);
                 queryFuture.complete(
-                        new JMSMessage(sendMessage(config.queue(), config.messagetype())));
+                        new JMSMessage(sendMessage(session, queueName!=null?queueName:config.queue(), config.messagetype())));
             });
             return queryFuture;
         });
     }
 
-    public String sendMessage(String queueName, String messageType)  {
+    public String sendMessage(Object existingsession, String queueName, String messageType)  {
         QueueConnection connection = null;
         javax.jms.Queue queue;
         QueueSession session =null;
         javax.jms.Message msg;
         try {
-            connection = connectionPool.connection();
-            session = connection.createQueueSession(true, Session.CLIENT_ACKNOWLEDGE);
+            if (existingsession == null) {
+                System.out.println("JMSMessagingChannel.sendMessage existingsession == null");
+                connection = connectionPool.connection();
+                session = connection.createQueueSession(true, Session.CLIENT_ACKNOWLEDGE);
+            } else {
+                System.out.println("JMSMessagingChannel.sendMessage existingsession:" + existingsession);
+                session = (QueueSession)existingsession;
+            }
             queue = session.createQueue(queueName);
-            String messageTxt = "test message";
-            session.createSender(queue).send(null); //TextMessage
+            String messageTxt = "jms message - messageType:" + messageType;
+            System.out.println("--->channel before send queue:" + queue);
+            session.createSender(queue).send(session.createTextMessage(messageTxt));
             session.commit();
             System.out.println("sendMessage committed messageTxt:" + messageTxt + " on queue:" + queue);
             session.close();
-            connection.close();
-            return queue.toString();
+            if(connection !=null) connection.close(); //todo should be keeping or passing the conn in to do close
+            return "test"; // this is null ... queue.toString();
         } catch (Exception e) {
             System.out.println("sendMessage failed " +
                     "(will attempt rollback if session is not null):" + e + " session:" + session);

@@ -70,7 +70,7 @@ public final class Main {
         MessagingClient messagingClient = MessagingClient.builder(messagingConfig)
                 // add an interceptor to named/filters of channel(s)
                 .addInterceptor(MessagingCounter.create(),  //todo would be from config
-                        "subscribe-with-orderpattern", "send-with-order-props", "filter-orders")
+                        "messaging-jms-demo")
                 // add an interceptor to channel type(s)
                 .addInterceptor(MessagingTimer.create(), MessagingChannelType.MESSAGING, MessagingChannelType.UNKNOWN)
                 // add an interceptor to all channels
@@ -86,7 +86,7 @@ public final class Main {
                 .register("/messaging", JsonBindingSupport.create())
                 .register(health)                   // Health at "/health"
                 .register(MetricsSupport.create())  // Metrics at "/metrics"
-                .register("/messaging", new PokemonService(messagingClient))
+                .register("/messaging", new MessagingService(messagingClient))
                 .build();
     }
 

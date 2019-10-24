@@ -9,6 +9,7 @@ import io.helidon.messagingclient.MessagingChannels;
 import io.helidon.messagingclient.common.InterceptorSupport;
 import io.helidon.messagingclient.spi.MessagingClientProviderBuilder;
 
+
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
@@ -116,7 +117,6 @@ public class JMSMessagingClientProviderBuilder implements MessagingClientProvide
         config.get("numberofmessagestoconsume").asInt().ifPresent(this::numberofmessagestoconsume);
         config.get("channels").as(MessagingChannels::create).ifPresent(this::channels);
         config.get("executor-service").as(ThreadPoolSupplier::create).ifPresent(this::executorService);
-        // todo set the connpool here at least for jdbc
         return this;
     }
 

@@ -21,6 +21,7 @@ public class JMSMessagingClient implements MessagingClient {
         System.out.println("JMSMessagingClient config.topic():" + config.topic());
         System.out.println("JMSMessagingClient config.queue():" + config.queue());
         System.out.println("JMSMessagingClient config.url():" + config.url());
+        System.out.println("JMSMessagingClient connectionpool:" + connectionPool);
         System.out.println("JMSMessagingClient config.numberofmessagestoconsume():" + config.numberofmessagestoconsume());
         this.interceptors = builder.interceptors();
         this.channels = builder.channels();
