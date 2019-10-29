@@ -20,13 +20,8 @@ server:
 
 messaging-kafka-demo:
   source: "kafka"
-  url: "demourl"
-  username: "demousername"
-  password: "demopassword"
   bootstrap.servers: "localhost:9092"
   topic: "demotopic"
-  config.numberofmessagestoconsume: -1
-  channels:
-    listenForMessagesWithPattern: "pattern regex..."
-    subscribe: "pattern regex..."
-    produce: "pattern regex..." # or sendMessagesWith...
+  config.numberofmessagestoconsume: 1
+  filters:
+    subscribetordersover100: "pattern regex..."

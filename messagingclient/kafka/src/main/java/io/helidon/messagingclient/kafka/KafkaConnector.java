@@ -13,13 +13,15 @@ public class KafkaConnector implements IncomingConnectorFactory, OutgoingConnect
     @Override
     public PublisherBuilder<? extends Message<?>> getPublisherBuilder(Config config) {
         KafkaSource<Object, Object> source = new KafkaSource<>(servers);
-        return source.getSource();
+        return source;
+//        return source.getSource();
     }
 
     @Override
     public SubscriberBuilder<? extends Message<?>, Void> getSubscriberBuilder(Config config) {
         KafkaSink sink = new KafkaSink(servers);
-        return sink.getSink();
+        return sink;
+//        return sink.getSink();
     }
 
 }

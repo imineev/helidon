@@ -43,10 +43,10 @@
             <artifactId>helidon-messagingclient-common</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.glassfish</groupId>
-            <artifactId>javax.json</artifactId>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>org.glassfish</groupId>-->
+            <!--<artifactId>javax.json</artifactId>-->
+        <!--</dependency>-->
 
         <dependency>
             <groupId>org.apache.kafka</groupId>
@@ -55,9 +55,10 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>io.projectreactor.kafka</groupId>
-            <artifactId>reactor-kafka</artifactId>
-            <version>1.1.0.RELEASE</version>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-kafka-client</artifactId>
+            <version>4.0.0-milestone3</version>
+            <scope>compile</scope>
         </dependency>
 
 

@@ -19,6 +19,8 @@ package io.helidon.examples.messaging.jms;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,10 +44,6 @@ public class MessagingService implements Service {
         this.messagingClient = messagingClient;
     }
 
-    MessagingService(MessagingClient messagingClient, MessagingClient messagingClient2) {
-        this.messagingClient = messagingClient;
-    }
-
     @Override
     public void update(Routing.Rules rules) {
         rules.get("/", this::noop)
@@ -53,6 +51,7 @@ public class MessagingService implements Service {
                 .get("/outgoing", this::outgoing)
                 .get("/incoming", this::incoming)
                 .get("/incomingoutgoing", this::incomingoutgoing)
+                .get("/booktravel", this::booktravel)
                 .get("/reserve", this::incomingoutgoingreserve)
                 .get("/compensate", this::incomingoutgoingcompensate);
     }
@@ -64,11 +63,17 @@ public class MessagingService implements Service {
 
     private void incoming(ServerRequest request, ServerResponse response) {
         System.out.println("incoming");
+        String filter = "jmssubscribewithpattern";
+        doIncoming(response, filter, null, null, sagaId);
+    }
+
+    private String doIncoming(ServerResponse response, String filter, String queue, String message, String sagaId) {
         messagingClient.channel(exec -> exec
-                .filterForEndpoint("jmssubscribewithpattern")//todo get from config/param subscribe(java.util.regex.Pattern
+                .filterForEndpoint(filter)//todo get from config/param subscribe(java.util.regex.Pattern
                 .incoming(new TestMessageProcessorIncoming()))
                 .thenAccept(messageReceived -> postRecieveProcessMessage(response, messageReceived))
                 .exceptionally(throwable -> sendError(throwable, response));
+        return "fail"; // get message from TestMessageProcessorIncoming or above
     }
 
     class TestMessageProcessorIncoming implements MessageProcessor {
@@ -100,6 +105,10 @@ public class MessagingService implements Service {
     private void outgoing(ServerRequest request, ServerResponse response) {
         System.out.println("outgoing/send message via producer");
         String message = "jmstest messaging";
+        doOutgoing(response, message, null, sagaId);
+    }
+
+    private void doOutgoing(ServerResponse response, String message, String queue, String sagaId) {
         messagingClient.channel(exec -> exec
                 .filterForEndpoint("jmssubscribewithpattern")//todo get from config/param subscribe(java.util.regex.Pattern
                 .outgoing(new TestMessageProcessorOutgoing(), () -> message))
@@ -128,8 +137,85 @@ public class MessagingService implements Service {
     }
 
 
+    private String booktravel(ServerRequest request, ServerResponse response) {
+        return receiveTripBookingRequest();
+    }
+
+    String bookingstate = "unknown";
+    String sagaId;
+    boolean isAutocompensating;/// 0. show plain java without 1. emulate escrow and emulate saga api 2. actual escrow emulate saga 3. show everything
+    boolean isCompensationTest;
+
+    String receiveTripBookingRequest() {
+        try {
+            beginSaga(); //no need to write to saga table
+            bookEventtTickets();
+            bookFlight();
+            bookHotel();
+            commitSaga();
+            bookingstate = "success";
+        } catch (Exception exception) {
+            bookingstate = "fail";
+            if (!isAutocompensating) abortSaga();
+        }
+        return bookingstate;
+    }
+
+    private void beginSaga() {
+        sagaId = "testsagaid1";
+    }
+
+    private void bookEventtTickets() throws Exception {
+        doOutgoing(null, "book", "eventticketingqueue", sagaId);
+        if (!Boolean.valueOf(
+                doIncoming(null, null, "eventticketingqueue", "bookingstatus", sagaId))) {
+            throw new Exception("booking failed for tickets");
+        }
+    }
+
+    private void bookFlight() throws Exception {
+        doOutgoing(null, "book", "flightqueue", sagaId);
+        if (!Boolean.valueOf(
+                doIncoming(null, null, "flightqueue", "bookingstatus", sagaId))) {
+            throw new Exception("booking failed for flight");
+        }
+    }
+
+    private void bookHotel() throws Exception {
+        doOutgoing(null, isCompensationTest ? "bookfail" : "book", "hotelqueue", sagaId);
+        if (!Boolean.valueOf(
+                doIncoming(null, null, "hotelqueue", "bookingstatus", sagaId))) {
+            throw new Exception("booking failed for hotel");
+        }
+    }
+
+    private void commitSaga() {
+        if (!isAutocompensating) {
+            doOutgoing(null, "commit", "eventticketingqueue", sagaId);
+            doOutgoing(null, "commit", "flightqueue", sagaId);
+            doOutgoing(null, "commit", "hotelqueue", sagaId);
+        } else {
+            //call commit sproc
+        }
+    }
+
+    private void abortSaga() {
+        if (!isAutocompensating) {
+            doOutgoing(null, "compensate", "eventticketingqueue", sagaId);
+            doOutgoing(null, "compensate", "flightqueue", sagaId);
+            doOutgoing(null, "compensate", "hotelqueue", sagaId);
+        }
+    }
+
+
     //todo this would be based on the message action not the rest call url...
+    //reduce inventory amount for given service and send
     private void incomingoutgoingreserve(ServerRequest request, ServerResponse response) {
+        isCompensate = false;
+        incomingoutgoing(request, response);
+    }
+
+    private void incomingoutgoingreservefail(ServerRequest request, ServerResponse response) {
         isCompensate = false;
         incomingoutgoing(request, response);
     }
@@ -140,16 +226,27 @@ public class MessagingService implements Service {
         incomingoutgoing(request, response);
     }
 
+    // messaging.addListener((session, message) -> processMessage(session, message));
     private void incomingoutgoing(ServerRequest request, ServerResponse response) {
         System.out.println("incomingoutgoing...");
         String outgoingmessaging = "jmstest outgoing messaging resulting/translating from incoming message";
-        messagingClient.channel(exec -> exec
-                .filterForEndpoint("jmssubscribewithpattern")//todo get from config/param subscribe(java.util.regex.Pattern
+        messagingClient.channel(exec -> exec // messagechanneloptions
+                .filterForEndpoint("jmssubscribewithpattern")// messagechannel
+                // CompletionStage<HelidonMessage> ...
                 .incoming(new TestMessageProcessorIncomingOutgoing(response, outgoingmessaging), false))
+//                .incoming(message -> processMessage(message))
                 .thenAccept(messageReceived -> postRecieveProcessMessage(response, messageReceived))
                 .exceptionally(throwable -> sendError(throwable, response));
         response.send("message received and message sent:" + outgoingmessaging);
     }
+
+//    <D extends MessagingChannel<D, R>, R> MessagingChannel<D,R> filterForEndpoint(String filter);
+//    <D extends MessagingChannel<D, R>, R> MessagingChannel<D,R> processMessage(String filter) {
+//        return null;
+//    }
+//    private static void  processMessage(CompletionStage<HelidonMessage> message) {
+//    private static void  processMessage(Function<String, T>) {
+//    }
 
 
     class TestMessageProcessorIncomingOutgoing implements MessageProcessor {

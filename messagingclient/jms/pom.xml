@@ -43,10 +43,10 @@
             <artifactId>helidon-messagingclient-common</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.glassfish</groupId>
-            <artifactId>javax.json</artifactId>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>org.glassfish</groupId>-->
+            <!--<artifactId>javax.json</artifactId>-->
+        <!--</dependency>-->
 
         <dependency>
             <groupId>com.oracle.jdbc</groupId>

@@ -13,16 +13,12 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.*;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscription;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.kafka.receiver.KafkaReceiver;
-import reactor.kafka.receiver.ReceiverOffset;
-import reactor.kafka.receiver.ReceiverOptions;
-import reactor.kafka.receiver.ReceiverRecord;
-import reactor.kafka.sender.KafkaSender;
-import reactor.kafka.sender.SenderOptions;
-import reactor.kafka.sender.SenderRecord;
 
+import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
@@ -52,127 +48,140 @@ public class KafkaMessagingChannel implements MessagingChannel {
         this.filter = filter;
     }
 
+    //Outgoing methods (8) are called as follows ...
+    //once at assembly time if...
+    // Publisher<Message<O>> method() - Returns a stream of Message
+    // Publisher<O> method() - Returns a stream of payload of type O, payloads are mapped to Message<O> by impl
+    // PublisherBuilder<Message<O>> method() - Returns a stream of Message
+    //once at subscription time if...
+    // PublisherBuilder<O> method() - Returns a stream of payload, payloads are mapped to Message<O> by impl
+    //for each request made by the subscriber if...
+    // Message<O> method() - Produces an infinite stream of Message
+    // O method() - Produces an infinite stream of payload, payloads are mapped to Message<O> by impl
+    // CompletionStage<Message<O>> method() - Produces an infinite stream of Message, not called by impl until the CompletionStage returned previously is completed
+    // CompletionStage<O> method() - roduces an infinite stream of payload, payloads are mapped to Message<O> by impl, not called by impl until the CompletionStage returned previously is completed
+
+    //Incoming methods (7) are called as follows...
+    //once at assembly time (to retrieve Subscriber which is then connected to the matching channel) ...
+    // Subscriber<Message<I>> method() - Returns a Subscriber that receives the Message objects transiting on the channel
+    // Subscriber<I> method() - Returns a Subscriber that receives the payload objects transiting on the channel, extracted using using Message.getPayload()
+    //once at assembly time (to retrieve SubscriberBuilder that is used to build a CompletionSubscriber that is subscribed to the matching channel) ...
+    // SubscriberBuilder<Message<I>> method() - Returns a SubscriberBuilder that receives the Message objects transiting on the channel
+    // SubscriberBuilder<I> method() - Returns a SubscriberBuilder that is used to build aCompletionSubscriber<I >` that receives the payload, extracted using using Message.getPayload()
+    //called for every Message<I> instance transiting on the channel (not called concurrently so must return before being called with the next payload) ...
+    // void method(I payload) - Consumes the payload
+    //called for every Message<I> instance transiting on the channel (must wait until the completion of the previously returned CompletionStage before calling the method again )...
+    // CompletionStage<?> method(Message<I> msg) - Consumes the Message
+    //called for every Message<I> instance transiting on the channel, payload extracted from the inflight messages (must wait until the completion of the previously returned CompletionStage before calling the method again )...
+    // CompletionStage<?> method(I payload) - Consumes the payload asynchronously
+
+    //IncomingOutgoing (ie Processor) (16) methods are called as follows...
+    //once at assembly time ...
+    // Processor<Message<I>, Message<O>> method() - Returns a Reactive Streams processor consuming incoming Message instances and produces Message instances
+    // Processor<I, O> method();
+    // ProcessorBuilder<Message<I>, Message<O>> method();
+    // ProcessorBuilder<I, O> method();
+    //called for every incoming message. Implementations must not call the method subsequently until the stream from the previously returned Publisher is completed. ...
+    // Publisher<Message<O>> method(Message<I> msg)
+    // Publisher<O> method(I payload)
+    //same but return PublisherBuilder
+    // PublisherBuilder<Message<O>> method (Message<I> msg)
+    // PublisherBuilder<O> method(I payload)
+    //called for every incoming message. Implementations must not call the method subsequently until the previous call must have returned.
+    // Message<O> method(Message<I> msg)
+    // O method(I payload)
+    //...
+    // CompletionStage<Message<O>> method (Message<I> msg)
+    //...
+    // CompletionStage<O> method(I payload)
+    //once at assembly time...
+    // Publisher<Message<O>> method(Publisher<Message<I>> pub)
+    // PublisherBuilder<Message<O>> method(PublisherBuilder<Message<I>> pub)
+    // Publisher<O> method(Publisher<I> pub)
+    // PublisherBuilder<O> method(PublisherBuilder<I> pub)
+
+    //Acknowledgments ...
+    // • NONE - no acknowledgment is performed
+    // • MANUAL - the user is responsible for the acknowledgement, by calling the Message#ack() method,
+    //            so the Reactive Messaging implementation does not apply implicit acknowledgement
+    // • PRE_PROCESSING - the Reactive Messaging implementation acknowledges the message before the annotated method or processing is executed
+    // • POST_PROCESSING - the Reactive Messaging implementation acknowledges the message once:
+    //          1. the method or processing completes if the method does not emit data
+    //          2. when the emitted data is acknowledged
+
+    //    @Outgoing("data")
+    public Publisher<Integer> source() {
+        SubmissionPublisher submissionPublisher =  new SubmissionPublisher();
+        return (Publisher) subscriber -> submissionPublisher.subscribe(new Flow.Subscriber() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscriber.onSubscribe(new Subscription() {
+                    @Override
+                    public void request(long n) {
+                        subscription.request(n);
+                    }
+
+                    @Override
+                    public void cancel() {
+                        subscription.cancel();
+                    }
+                });
+            }
+
+            @Override
+            public void onNext(Object item) {
+                subscriber.onNext(item);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                subscriber.onError(throwable);
+            }
+
+            @Override
+            public void onComplete() {
+                subscriber.onComplete();
+            }
+        });
+    }
+
+
     public CompletionStage<HelidonMessage> incoming(MessageProcessor messageProcessor) {
+        try {
+//
+            Method[] methods = messageProcessor.getClass().getMethods();
+            methods[0].getReturnType();
+            //continue to process..
+            // eg if "void method(I payload)"
+            // called for every Message<I> instance transiting on the channel
+            // (not called concurrently so must return before being called with the next payload) ...
+            // subscribe and call for every message...
+            // messageProcessor.getClass().getMethod("someincomingmethod",String.class).invoke(
+            ////                    messageProcessor, null);
+//        } catch (NoSuchMethodException e) {
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        //see abstractmediator
         return incoming(messageProcessor, false);
     }
 
     public CompletionStage<HelidonMessage> incoming(MessageProcessor messageProcessor, boolean isCloseSession) {
-        LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel incoming"));
-        CompletableFuture<HelidonMessage> queryFuture = new CompletableFuture<>();
-        CompletableFuture<Void> channelFuture = new CompletableFuture<>();
-        MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
-                .resultFuture(queryFuture)
-                .channelFuture(channelFuture);
-        update(messagingContext);
-        CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingContext);
-        messagingContextFuture.exceptionally(throwable -> {
-            channelFuture.completeExceptionally(throwable);
-            queryFuture.completeExceptionally(throwable);
-            return null;
-        });
-        int count = 20;
-        CountDownLatch latch = new CountDownLatch(count);
-        Disposable disposable;
-        ReceiverOptions<Integer, String> receiverOptions;
-        SimpleDateFormat dateFormat;
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, config.bootstrapservers());
-        props.put(ConsumerConfig.CLIENT_ID_CONFIG, "sample-consumer");
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "sample-group");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, IntegerDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        receiverOptions = ReceiverOptions.create(props);
-        dateFormat = new SimpleDateFormat("HH:mm:ss:SSS z dd MMM yyyy");
-
-        ReceiverOptions<Integer, String> options = receiverOptions.subscription(Collections.singleton(config.topic()))
-                .addAssignListener(partitions -> System.out.println("onPartitionsAssigned {}:" + partitions))
-                .addRevokeListener(partitions -> System.out.println("onPartitionsRevoked {}:" + partitions));
-        Flux<ReceiverRecord<Integer, String>> kafkaFlux = KafkaReceiver.create(options).receive();
-        LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel incoming kafkaFlux:" + kafkaFlux));
-        disposable = kafkaFlux.subscribe(record -> {
-            ReceiverOffset offset = record.receiverOffset();
-            System.out.printf("incoming received message: topic-partition=%s offset=%d timestamp=%s key=%d value=%s\n",
-                    offset.topicPartition(),
-                    offset.offset(),
-                    dateFormat.format(new Date(record.timestamp())),
-                    record.key(),
-                    record.value());
-            System.out.println("KafkaMessagingChannel.incoming record.value():"+record.value());
-            HelidonMessage message = new KafkaMessage(record.value());
-            messageProcessor.processMessage(message);
-            channelFuture.complete(null);
-            queryFuture.complete(message);
-            offset.acknowledge();
-            latch.countDown();
-        });
-        LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel incoming disposable:" + disposable));
-        try {
-            latch.await(10, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        disposable.dispose();
-        return queryFuture;
+       return incomingExecutor(messageProcessor);
     }
 
 
     @Override
     public CompletionStage<HelidonMessage> outgoing(
             MessageProcessor messageProcessor, HelidonMessage message) {
-        return outgoing(messageProcessor, message, null, null);
+        return outgoingExecutor(messageProcessor);
     }
 
     @Override
-    public CompletionStage<HelidonMessage> outgoing(
-            MessageProcessor messageProcessor, HelidonMessage kafkamessage, Object session, String queueName) {
-        System.out.println("KafkaMessagingChannel.channel outgoing");
-        LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel outgoing"));
-
-        CompletableFuture<HelidonMessage> queryFuture = new CompletableFuture<>();
-        CompletableFuture<Void> channelFuture = new CompletableFuture<>();
-        MessagingInterceptorContext messagingContext = MessagingInterceptorContext.create(messagingType())
-                .resultFuture(queryFuture)
-                .channelFuture(channelFuture);
-        update(messagingContext);
-        CompletionStage<MessagingInterceptorContext> messagingContextFuture = invokeInterceptors(messagingContext);
-        messagingContextFuture.exceptionally(throwable -> {
-            channelFuture.completeExceptionally(throwable);
-            queryFuture.completeExceptionally(throwable);
-            return null;
-        });
-        int count = 1;
-        CountDownLatch latch = new CountDownLatch(count);
-        Map<String, Object> props = new HashMap<>();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.bootstrapservers());
-        props.put(ProducerConfig.CLIENT_ID_CONFIG, "sample-producer");
-        props.put(ProducerConfig.ACKS_CONFIG, "all");
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        SenderOptions<Integer, String> senderOptions = SenderOptions.create(props);
-        KafkaSender<Integer, String> sender = KafkaSender.create(senderOptions);
-        SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss:SSS z dd MMM yyyy");
-        System.out.println("KafkaMessagingChannel.channel outgoing count:" + count);
-        sender.<Integer>send(Flux.range(1, count)
-                .map(i -> SenderRecord.create(new ProducerRecord<>(config.topic(), i, kafkamessage.getString() + i), i)))
-                .doOnError(e -> System.out.println("Send failed:" + e))
-                .subscribe(r -> {
-                    RecordMetadata metadata = r.recordMetadata();
-                    System.out.printf("HelidonMessage %d sent successfully, topic-partition=%s-%d offset=%d timestamp=%s\n",
-                            r.correlationMetadata(),
-                            metadata.topic(),
-                            metadata.partition(),
-                            metadata.offset(),
-                            dateFormat.format(new Date(metadata.timestamp())));
-                    channelFuture.complete(null);
-                    KafkaMessage message = new KafkaMessage(metadata.toString());
-                    messageProcessor.processMessage(message);
-                    queryFuture.complete(message); //todo returns metadata message currently
-                    latch.countDown();
-                });
-        return queryFuture;
+    public CompletionStage<HelidonMessage> outgoing(MessageProcessor messageProcessor, HelidonMessage message, Object session, String queueName) {
+        return outgoingExecutor(messageProcessor);
     }
-
 
     /**
      * Invoke all interceptors.
@@ -223,15 +232,6 @@ public class KafkaMessagingChannel implements MessagingChannel {
     protected String messagingType() {
         return messagingType;
     }
-
-
-
-
-
-
-// todo unused delete...
-
-
 
     public CompletionStage<HelidonMessage> incomingExecutor(MessageProcessor messageProcessor) {
         LOGGER.fine(() -> String.format("KafkaMessagingChannel.channel incoming"));

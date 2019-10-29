@@ -18,7 +18,7 @@ public interface MessagingChannels {
      * @return text of the channel (such as SQL code for SQL-based messaging channels)
      * @throws MessagingClientException in case the channel name does not exist
      */
-    String channel(String name) throws MessagingClientException;
+    MessagingChannel channel(String name) throws MessagingClientException;
 
     /**
      * Builder of channels.
@@ -38,7 +38,7 @@ public interface MessagingChannels {
      */
     static MessagingChannels create(Config config) {
         return MessagingChannels.builder()
-                .config(config)
+//                .config(config)
                 .build();
     }
 
@@ -46,7 +46,7 @@ public interface MessagingChannels {
      * Fluent API builder for {@link MessagingChannels}.
      */
     class Builder implements io.helidon.common.Builder<MessagingChannels> {
-        private final Map<String, String> configuredChannels = new HashMap<>();
+        private final Map<String, MessagingChannel> configuredChannels = new HashMap<>();
 
         /**
          * Add named messaging channel to messaging configuration..
@@ -55,7 +55,7 @@ public interface MessagingChannels {
          * @param channel messaging channel {@link String}
          * @return messaging provider builder
          */
-        public Builder addChannel(String name, String channel) {
+        public Builder addChannel(String name, MessagingChannel channel) {
             Objects.requireNonNull(name, "Channel name must be provided");
             Objects.requireNonNull(channel, "Channel body must be provided");
             configuredChannels.put(name, channel);
@@ -66,23 +66,24 @@ public interface MessagingChannels {
          * Set channels from configuration. Each key in the current node is treated as a name of the channel,
          * each value as the channel content.
          *
-         * @param config config node located on correct node
+//         * @param config config node located on correct node
          * @return updated builder instance
          */
-        public Builder config(Config config) {
-            config.detach().asMap()
-                    .ifPresent(configuredChannels::putAll);
-            return this;
-        }
+//        public Builder config(Config config) {
+//            config.detach().asMap()
+//                    .ifPresent(configuredChannels::putAll);
+//            return this;
+//        }
 
         @Override
         public MessagingChannels build() {
             return new MessagingChannels() {
-                private final Map<String, String> channels = new HashMap<>(configuredChannels);
+                private final Map<String, MessagingChannel> channels =
+                        new HashMap<String, MessagingChannel>(configuredChannels);
 
                 @Override
-                public String channel(String name) {
-                    String channel = channels.get(name);
+                public MessagingChannel channel(String name) {
+                    MessagingChannel channel = channels.get(name);
 
                     if (null == channel) {
                         throw new MessagingClientException("Channel named '" + name + "' is not defined");

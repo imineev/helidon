@@ -34,6 +34,10 @@ import io.helidon.messagingclient.spi.MessagingInterceptorProvider;
  */
 public interface MessagingClient {
 
+    static MessagingChannels builder(org.eclipse.microprofile.config.Config mpConfig) {
+        return new MessagingChannels.Builder().build();
+    }
+
     /**
      * Pings the messaging, completes when Messagingis up and ready, completes exceptionally if not.
      *
@@ -195,22 +199,7 @@ public interface MessagingClient {
                             });
                         });
                     }
-//                    Config typed = providerConfig.get("typed");
-//                    if (typed.exists()) {
-//                        typed.asNodeList().ifPresent(configs -> {
-//                            configs.forEach(typedConfig -> {
-//                                ConfigValue<List<String>> types = typedConfig.get("types").asList(String.class);
-//                                types.ifPresent(typeList -> {
-//                                    MessagingChannelType[] typeArray = typeList.stream()
-//                                            .map(MessagingChannelType::valueOf)
-//                                            .toArray(MessagingChannelType[]::new);
-//
-//                                    added.set(true);
-//                                    addInterceptor(provider.create(typedConfig), typeArray);
-//                                });
-//                            });
-//                        });
-//                    }
+                    //
                     if (!added.get()) {
                         if (global.exists()) {
                             addInterceptor(provider.create(global));
@@ -265,11 +254,11 @@ public interface MessagingClient {
          * Add an interceptor to specific named channels.
          *
          * @param interceptor    interceptor to apply
-         * @param channelNames names of channels to apply it on
+         * @param filterNames names of channels to apply it on
          * @return updated builder instance
          */
-        public Builder addInterceptor(MessagingInterceptor interceptor, String... channelNames) {
-            theBuilder.addInterceptor(interceptor, channelNames);
+        public Builder addInterceptor(MessagingInterceptor interceptor, String... filterNames) {
+            theBuilder.addInterceptor(interceptor, filterNames);
             return this;
         }
 

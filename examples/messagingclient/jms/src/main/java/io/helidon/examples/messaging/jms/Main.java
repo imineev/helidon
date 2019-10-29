@@ -22,10 +22,10 @@ import io.helidon.media.jsonb.server.JsonBindingSupport;
 import io.helidon.media.jsonp.server.JsonSupport;
 import io.helidon.messagingclient.MessagingClient;
 import io.helidon.messagingclient.MessagingChannelType;
-import io.helidon.messagingclient.health.MessagingClientHealthCheck;
-import io.helidon.messagingclient.metrics.MessagingCounter;
-import io.helidon.messagingclient.metrics.MessagingTimer;
-import io.helidon.messagingclient.tracing.MessagingClientTracing;
+//import io.helidon.messagingclient.health.MessagingClientHealthCheck;
+//import io.helidon.messagingclient.metrics.MessagingCounter;
+//import io.helidon.messagingclient.metrics.MessagingTimer;
+//import io.helidon.messagingclient.tracing.MessagingClientTracing;
 import io.helidon.metrics.MetricsSupport;
 import io.helidon.tracing.TracerBuilder;
 import io.helidon.webserver.Routing;
@@ -42,52 +42,34 @@ public final class Main {
     }
 
     public static void main(final String[] args) throws IOException {
-        startServer();
-    }
-
-    static WebServer startServer() throws IOException {
         LogManager.getLogManager().readConfiguration(
                 Main.class.getResourceAsStream("/logging.properties"));
         Config config = Config.create();
-        ServerConfiguration serverConfig =
-                ServerConfiguration.builder(config.get("server"))
-                        .tracer(TracerBuilder.create("messaging-poc").buildAndRegister())
-                        .build();
-        WebServer server = WebServer.create(serverConfig, createRouting(config));
-        server.start().thenAccept(ws -> {
-            System.out.println(
-                    "WEB server is up! http://localhost:" + ws.port() + "/");
-        });
-        server.whenShutdown().thenRun(() -> System.out.println("WEB server is DOWN. Good bye!"));
-        return server;
-    }
-
-
-    private static Routing createRouting(Config config) {
         Config messagingConfig = config.get("messaging-jms-demo");
         System.out.println("Main.createRouting messagingsourceConfig=" + config.get("source").name());
 
         MessagingClient messagingClient = MessagingClient.builder(messagingConfig)
                 // add an interceptor to named/filters of channel(s)
-                .addInterceptor(MessagingCounter.create(),  //todo would be from config
-                        "messaging-jms-demo")
-                // add an interceptor to channel type(s)
-                .addInterceptor(MessagingTimer.create(), MessagingChannelType.MESSAGING, MessagingChannelType.UNKNOWN)
-                // add an interceptor to all channels
-                .addInterceptor(MessagingClientTracing.create())
+//                .addInterceptor(MessagingCounter.create(),"subscribetordersover100")
+//                // add an interceptor to channel type(s)
+//                .addInterceptor(MessagingTimer.create(), MessagingChannelType.MESSAGING, MessagingChannelType.UNKNOWN)
+//                // add an interceptor to all channels
+//                .addInterceptor(MessagingClientTracing.create())
                 .build();
 
         HealthSupport health = HealthSupport.builder()
-                .add(MessagingClientHealthCheck.create(messagingClient))
+//                .add(MessagingClientHealthCheck.create(messagingClient))
                 .build();
+        MessagingService messagingService = new MessagingService(messagingClient);
+        System.out.println("JMS Main.startServer servicename:" + System.getProperty("servicename"));
         // for headless can do here instead of pokemon service...
-        return Routing.builder()
-                .register("/messaging", JsonSupport.create())
-                .register("/messaging", JsonBindingSupport.create())
-                .register(health)                   // Health at "/health"
-                .register(MetricsSupport.create())  // Metrics at "/metrics"
-                .register("/messaging", new MessagingService(messagingClient))
-                .build();
+//        return Routing.builder()
+//                .register("/messaging", JsonSupport.create())
+//                .register("/messaging", JsonBindingSupport.create())
+//                .register(health)                   // Health at "/health"
+//                .register(MetricsSupport.create())  // Metrics at "/metrics"
+//                .register("/messaging", new MessagingService(messagingClient))
+//                .build();
     }
 
 

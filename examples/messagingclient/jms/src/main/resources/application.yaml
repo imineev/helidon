@@ -20,13 +20,11 @@ server:
 
 messaging-jms-demo:
   source: "jms"
-  url: ""
-  username: ""
-  password: ""
+  url: "jdbc:oracle:thin:@//129.146.53.28:1521/TestDB_pdb1.sub09071537170.domnet.oraclevcn.com"
+  username: "aquser1"
+  password: "AQWelcome123###"
   queue: "orderqueue"
-#  topic: "demotopic"
-  config.numberofmessagestoconsume: -1
-  channels:
-    listenForMessagesWithPattern: "pattern regex..."
-    subscribe: "pattern regex..."
-    produce: "pattern regex..." # or sendMessagesWith...
+  outgoingqueue: "inventoryqueue"
+  config.numberofmessagestoconsume: 1
+  filters:
+    subscribetordersover100: "pattern regex..."
