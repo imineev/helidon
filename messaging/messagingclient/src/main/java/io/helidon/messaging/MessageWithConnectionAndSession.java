@@ -7,25 +7,32 @@ import java.util.concurrent.CompletionStage;
 
 //todo this is AQ JMS specific
 public class MessageWithConnectionAndSession<K, V> implements Message<javax.jms.Message> {
+    String channelname;
     javax.jms.Message payload;
     Connection connection;
     javax.jms.Session session;
 
-    public MessageWithConnectionAndSession(
+    public MessageWithConnectionAndSession(String channelname,
             javax.jms.Message payload, Connection connection, javax.jms.Session session,
                           K key,
             V value) {
+        this.channelname = channelname;
         this.payload = payload;
         this.connection = connection;
         this.session = session;
     }
 
-    Connection getConnection() {
+    public Connection getConnection() {
         return connection;
     }
 
-    javax.jms.Session getSession() {
+    public javax.jms.Session getSession() {
         return session;
+    }
+
+    public String getChannelName() {
+        return channelname; // todo current assumption/limitation is that outgoing is same channel as incoming
+        // "inventoryqueue-channel";
     }
 
     @Override

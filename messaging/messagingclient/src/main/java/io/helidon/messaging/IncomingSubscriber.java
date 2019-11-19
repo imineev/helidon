@@ -11,26 +11,27 @@ import org.reactivestreams.Subscription;
 
 
 public class IncomingSubscriber implements Subscriber<Message<?>> {
-    private final IncomingMessagingService incomingMessagingService;
+    private IncomingMessagingService incomingMessagingService;
+    private ProcessingMessagingService processingMessagingService;
     private List<IncomingConnectorFactory> incomingConnectorFactories = new ArrayList<>();
     private boolean isAQ;
+    private Outgoing outgoing;
 
     public IncomingSubscriber(IncomingMessagingService incomingMessagingService, String channelName) {
-        System.out.println("IncomingSubscriber.IncomingSubscriber" +
-                " incomingMessagingService = [" + incomingMessagingService + "], channelName = [" + channelName + "]");
         this.incomingMessagingService = incomingMessagingService;
     }
 
+    public IncomingSubscriber(ProcessingMessagingService processingMessagingService, String channelName) {
+        this.processingMessagingService = processingMessagingService;
+    }
+
     public void addIncomingConnectionFactory(IncomingConnectorFactory incomingConnectorFactory) {
-        System.out.println("IncomingSubscriber.addIncomingConnectionFactory " +
-                "incomingConnectorFactory:" + incomingConnectorFactory);
         incomingConnectorFactories.add(incomingConnectorFactory);
     }
 
 
-    public void subscribe(Config config) {
-        System.out.println("IncomingSubscriber.subscribe incomingConnectorFactory:" +
-                incomingConnectorFactories.get(0));
+    public void subscribe(Config config, Outgoing outgoing) {
+        this.outgoing = outgoing;
         incomingConnectorFactories
                 .get(0) //todo only supports one currently
                 .getPublisherBuilder(config)
@@ -38,19 +39,30 @@ public class IncomingSubscriber implements Subscriber<Message<?>> {
                 .subscribe(this);
     }
 
-
     @Override
     public void onNext(Message<?> message) {
         System.out.println("IncomingSubscriber.onNext message:" + message);
         try {
-            if (isAQ) {
+            if (processingMessagingService != null) {
                 MessageWithConnectionAndSession messageWithConnectionAndSession =
                         message.unwrap(MessageWithConnectionAndSession.class);
-                incomingMessagingService.onIncoming(messageWithConnectionAndSession,
-                        messageWithConnectionAndSession.getConnection(),
-                        messageWithConnectionAndSession.getSession());
-            } else {
-                incomingMessagingService.onIncoming(message, null, null);
+                Channels.getInstance().addProcessingMessagingService(
+                        messageWithConnectionAndSession.getChannelName(), processingMessagingService);
+                Channels.getInstance().addProcessingMessagingServiceHolder(
+                        messageWithConnectionAndSession.getChannelName(), message,
+                        messageWithConnectionAndSession.getSession(),
+                        messageWithConnectionAndSession.getConnection());
+                outgoing.outgoing();
+            } else { // is just incoming
+                if (isAQ) {
+                    MessageWithConnectionAndSession messageWithConnectionAndSession =
+                            message.unwrap(MessageWithConnectionAndSession.class);
+                    incomingMessagingService.onIncoming(messageWithConnectionAndSession,
+                            messageWithConnectionAndSession.getConnection(),
+                            messageWithConnectionAndSession.getSession());
+                } else {
+                    incomingMessagingService.onIncoming(message, null, null);
+                }
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -74,8 +86,9 @@ public class IncomingSubscriber implements Subscriber<Message<?>> {
         System.out.println("IncomingSubscriber.onComplete");
     }
 
-    public void setAQ(boolean b) {
+    void setAQ(boolean b) {
         isAQ = b;
     }
+
 }
 

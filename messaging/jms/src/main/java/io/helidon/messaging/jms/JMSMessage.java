@@ -6,10 +6,6 @@ import java.util.concurrent.CompletionStage;
 
 public class JMSMessage implements Message {
 
-    public JMSMessage(Object string) {
-        System.out.println("JMSMessage string:" + string);
-    }
-
     @Override
     public Object getPayload() {
         return null;

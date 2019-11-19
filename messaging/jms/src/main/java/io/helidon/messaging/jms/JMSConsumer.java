@@ -1,6 +1,7 @@
 package io.helidon.messaging.jms;
 
 import io.helidon.messaging.MessageWithConnectionAndSession;
+import io.helidon.messaging.MessagingClient;
 import io.helidon.messaging.jms.connector.JMSPublisherBuilder;
 import oracle.jdbc.datasource.OracleDataSource;
 import oracle.jms.AQjmsQueueConnectionFactory;
@@ -9,7 +10,6 @@ import org.eclipse.microprofile.reactive.messaging.spi.ConnectorFactory;
 
 import javax.jms.*;
 import java.io.Closeable;
-import java.sql.SQLException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
@@ -23,16 +23,21 @@ public class JMSConsumer<K, V> implements Closeable {
     private String url;
     private String user;
     private String password;
+    private String queueName;
+    private String selector;
+    String channelName;
 
     public JMSConsumer(org.eclipse.microprofile.config.Config config) {
         for (String propertyName : config.getPropertyNames()) {
             if (propertyName.startsWith(ConnectorFactory.INCOMING_PREFIX)) {
                 String striped = propertyName.substring(ConnectorFactory.INCOMING_PREFIX.length());
-                String channelName = striped.substring(0, striped.indexOf("."));
+                channelName = striped.substring(0, striped.indexOf("."));
                 String channelPropertyName = striped.substring(channelName.length() + 1);
                 if (channelPropertyName.equals("url")) url = config.getValue(propertyName, String.class);
                 else if (channelPropertyName.equals("user")) user = config.getValue(propertyName, String.class);
                 else if (channelPropertyName.equals("password")) password = config.getValue(propertyName, String.class);
+                else if (channelPropertyName.equals("queue")) queueName = config.getValue(propertyName, String.class);
+                else if (channelPropertyName.equals("selector")) selector = config.getValue(propertyName, String.class);
 
             }
         }
@@ -48,51 +53,41 @@ public class JMSConsumer<K, V> implements Closeable {
             oracleDataSource.setPassword(password);
             queueConnectionFactory = new AQjmsQueueConnectionFactory();
             ((AQjmsQueueConnectionFactory) queueConnectionFactory).setDatasource(oracleDataSource);
-            System.out.println("JMSConsumer.createConnectionFactory queueConnectionFactory:" + queueConnectionFactory);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
     }
 
 
-    //    public JMSPublisherBuilder createPublisherBuilder(ExecutorService executorService) {
     public JMSPublisherBuilder<K, V> createPublisherBuilder(ExecutorService executorService) {
         this.externalExecutorService = executorService;
-        System.out.println("JMSConsumer.createPublisherBuilder");
         return new JMSPublisherBuilder<>(subscriber -> {
             externalExecutorService.submit(() -> {
                 try {
-                    System.out.println("JMSConsumer.listening for messages...");
-//                    while (!closed.get()) {
-                    while (true) {
-                        boolean isCloseSession = false;
+                    while (true) { //todo config for number of msg/requests made
+                        boolean isCloseSession = MessagingClient.isIncoming; //todo false for processor true for incoming
                         QueueConnection connection = null;
                         javax.jms.Queue queue;
                         QueueSession session = null;
                         javax.jms.Message msg;
                         try {
-                            System.out.println("JMSConsumer.createPublisherBuilder before queueconnection");
                             connection = queueConnectionFactory.createQueueConnection();
-                            System.out.println("JMSConsumer.createPublisherBuilder queueconnection:" + connection);
                             session = connection.createQueueSession(true, Session.CLIENT_ACKNOWLEDGE);
-                            queue = session.createQueue(getQueueName());
+                            queue = session.createQueue(queueName);
                             java.sql.Connection dbConnection = ((AQjmsSession) session).getDBConnection();
-                            System.out.println("JMSConsumer.createPublisherBuilder dbConnection:" + dbConnection);
-                            MessageConsumer consumer = session.createReceiver(queue);
-                            //todo allow listeners, filters, etc. to be added
-                            consumer.setMessageListener(message -> System.out.println("test message listener message:" + message));
+                            System.out.println("JMSConsumer selector:" + selector);
+                            MessageConsumer consumer = selector == null?
+                                    session.createConsumer(queue):
+                                    session.createConsumer(queue, selector);
+//                            MessageConsumer consumer = session.createReceiver(queue); // for msg enqueued by Non-JMS (PL/SQL client)
                             connection.start();
-                            System.out.println("--->channel before receive queue:" + queue);
+                            System.out.println("JMSConsumer before receive/consume queue:" + queue);
                             msg = consumer.receive();
-                            System.out.println("JMSMessagingChannel.receiveMessages channel msg.getJMSType():" + msg.getJMSType());
-                            System.out.println("JMSMessagingChannel.receiveMessages channel msg:" + msg);
-                            System.out.println("JMSMessagingChannel.receiveMessages channel message:" + ((TextMessage) msg).getText()); //todo assumed txt message
-//
+                            System.out.println("--->JMSConsumer message received:" + msg);
                             MessageWithConnectionAndSession<K,V> messageWithConnectionAndSession =
                                     new MessageWithConnectionAndSession<>
-                                            (msg, dbConnection, session, null, null);
+                                            (channelName, msg, dbConnection, session, null, null);
                             subscriber.onNext(messageWithConnectionAndSession);
-                            System.out.println("JMSMessagingChannel.receiveMessages isCloseSession:" + isCloseSession);
                             if (isCloseSession) {
                                 session.commit();
                                 session.close();
@@ -130,11 +125,6 @@ public class JMSConsumer<K, V> implements Closeable {
             });
         });
     }
-
-    private String getQueueName() {
-        return "demoqueue"; //todo
-    }
-
 
     @Override
     public void close() {

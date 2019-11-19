@@ -19,8 +19,6 @@ import java.lang.reflect.Constructor;
 import java.util.*;
 import java.util.logging.Logger;
 
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.eclipse.microprofile.reactive.messaging.Acknowledgment;
 import org.eclipse.microprofile.reactive.messaging.Message;
 import org.eclipse.microprofile.reactive.messaging.spi.ConnectorFactory;
@@ -36,7 +34,8 @@ public class MessagingClient {
     static org.eclipse.microprofile.config.Config config;
     Map<String, IncomingConnectorFactory> incomingConnectorFactories = new HashMap<>();
     Map<String, OutgoingConnectorFactory> outgoingConnectorFactories = new HashMap<>();
-    Channels channels = new Channels();
+    Channels channels = Channels.getInstance();
+    public static boolean isIncoming = false;
 
     private MessagingClient() {
     }
@@ -72,7 +71,6 @@ public class MessagingClient {
                 }
             }
         }
-
     }
 
     private void initChannels() {
@@ -81,7 +79,7 @@ public class MessagingClient {
             if (propertyName.startsWith(ConnectorFactory.INCOMING_PREFIX)) {
                 String striped = propertyName.substring(
                         ConnectorFactory.INCOMING_PREFIX.length());
-                String channelname =  striped.substring(0, striped.indexOf("."));
+                String channelname = striped.substring(0, striped.indexOf("."));
                 String channelProperty = striped.substring(channelname.length() + 1);
                 if (channelProperty.equals("connector")) {
                     String connectorName = config.getValue(propertyName, String.class);
@@ -89,17 +87,14 @@ public class MessagingClient {
                     channels.addIncomingConnectorFactory(channelname, connectorName,
                             incomingConnectorFactory);
                 }
-            }
-            else if (propertyName.startsWith(ConnectorFactory.OUTGOING_PREFIX)) {
-                System.out.println("MessagingClient.initChannels OUTGOING_PREFIX");
+            } else if (propertyName.startsWith(ConnectorFactory.OUTGOING_PREFIX)) {
                 String striped = propertyName.substring(
                         ConnectorFactory.OUTGOING_PREFIX.length());
-                String channelname =  striped.substring(0, striped.indexOf("."));
+                String channelname = striped.substring(0, striped.indexOf("."));
                 String channelProperty = striped.substring(channelname.length() + 1);
                 if (channelProperty.equals("connector")) {
                     String connectorName = config.getValue(propertyName, String.class);
                     OutgoingConnectorFactory outgoingConnectorFactory = outgoingConnectorFactories.get(connectorName);
-                    System.out.println("MessagingClient.initChannels OUTGOING_PREFIX outgoingConnectorFactory:" + outgoingConnectorFactory);
                     channels.addOutgoingConnectorFactory(channelname, connectorName,
                             outgoingConnectorFactory);
                 }
@@ -113,58 +108,34 @@ public class MessagingClient {
 
     public void incoming(IncomingMessagingService incomingMessagingService, String channelname,
                          Acknowledgment.Strategy acknowledgement, boolean isAQ) {
+        isIncoming = true;
         IncomingSubscriber incomingSubscriber = new IncomingSubscriber(incomingMessagingService, channelname);
         IncomingConnectorFactory incomingConnectorFactory = channels.getIncomingConnectorFactory(channelname);
         incomingSubscriber.addIncomingConnectionFactory(incomingConnectorFactory);
         if (isAQ) incomingSubscriber.setAQ(true); //todo temp hack
-        incomingSubscriber.subscribe(new ChannelSpecificConfig(config, channelname, ConnectorFactory.INCOMING_PREFIX));
+        incomingSubscriber.subscribe(new ChannelSpecificConfig(config, channelname, ConnectorFactory.INCOMING_PREFIX), null);
     }
 
 
     public void outgoing(OutgoingMessagingService outgoingMessagingService, String channelname, Message message) {
-        outgoing(outgoingMessagingService, channelname, message, false);
+        outgoing(outgoingMessagingService, channelname, false);
     }
-    public void outgoing(OutgoingMessagingService outgoingMessagingService, String channelname, Message message,
+
+    public void outgoing(OutgoingMessagingService outgoingMessagingService, String channelname,
                          boolean isAQ) {
-        OutgoingPublisher outgoingPublisher = new OutgoingPublisher(outgoingMessagingService, channelname);
-        OutgoingConnectorFactory outgoingConnectorFactory = channels.getOutgoingConnectorFactory(channelname);
-        outgoingPublisher.addOutgoingConnectionFactory(outgoingConnectorFactory);
-        if (isAQ) outgoingPublisher.setAQ(true); //todo temp hack
-        outgoingPublisher.publish(new ChannelSpecificConfig(config, channelname, ConnectorFactory.OUTGOING_PREFIX), message);
+        channels.addOutgoingMessagingService(channelname, outgoingMessagingService);
+        new Outgoing(channelname, config, isAQ).outgoing();
     }
 
-    private class ChannelSpecificConfig implements Config {
-        HashMap<String, String> values = new HashMap();
-
-        public ChannelSpecificConfig(Config config, String channelname, String connfactoryPrefix) {
-            for (String propertyName : config.getPropertyNames()) {
-                if(propertyName.startsWith(connfactoryPrefix) ) {
-                    String striped = propertyName.substring(connfactoryPrefix.length());
-                    if(striped.substring(0, striped.indexOf(".")).equals(channelname))
-                        values.put(propertyName, config.getValue(propertyName, String.class));
-                }
-            }
-        }
-
-        @Override
-        public <T> T getValue(String propertyName, Class<T> propertyType) {
-            return (T) values.get(propertyName);
-        }
-
-        @Override
-        public <T> Optional<T> getOptionalValue(String propertyName, Class<T> propertyType) {
-            return Optional.empty();
-        }
-
-        @Override
-        public Iterable<String> getPropertyNames() {
-            return values.keySet();
-        }
-
-        @Override
-        public Iterable<ConfigSource> getConfigSources() {
-            return null;
-        }
+    public void incomingoutgoing(ProcessingMessagingService processingMessagingService, String incomgingchannelname,
+                                 String outgoingchannelname, Acknowledgment.Strategy acknowledgement, boolean isAQ) {
+        IncomingSubscriber incomingSubscriber = new IncomingSubscriber(processingMessagingService, incomgingchannelname);
+        IncomingConnectorFactory incomingConnectorFactory = channels.getIncomingConnectorFactory(incomgingchannelname);
+        incomingSubscriber.addIncomingConnectionFactory(incomingConnectorFactory);
+        if (isAQ) incomingSubscriber.setAQ(true); //todo temp hack
+        incomingSubscriber.subscribe(
+                new ChannelSpecificConfig(config, incomgingchannelname, ConnectorFactory.INCOMING_PREFIX),
+                new Outgoing(outgoingchannelname, config, isAQ));
     }
 
 }

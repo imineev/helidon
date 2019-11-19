@@ -54,9 +54,10 @@ public class MessagingService {
     private void doOutgoing(MessagingClient messagingClient) throws Exception{
         OutgoingMessagingService outgoingMessagingService = new OutgoingMessagingService(){
             @Override
-            public void onOngoing(Message message, Connection connection, Session session) {
-                System.out.println("MessagingService.onOngoing test message = [" + message + "], " +
+            public Message onOutgoing(Connection connection, Session session) {
+                System.out.println("MessagingService.onOutgoing test" +
                         "connection = [" + connection + "], session = [" + session + "]");
+                return null;
             }
         };
         messagingClient.outgoing(outgoingMessagingService, outgoingChannelName, new Message(){

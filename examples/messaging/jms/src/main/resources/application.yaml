@@ -20,9 +20,9 @@ server:
 
 messaging-jms-demo:
   source: "jms"
-  url: "jdbc:oracle:thin:@//129.146.53.28:1521/TestDB_pdb1.sub09071537170.domnet.oraclevcn.com"
-  username: "aquser1"
-  password: "AQWelcome123###"
+  url: "xxxxxx"
+  username: "xxxxx"
+  password: "xxxxxx"
   queue: "orderqueue"
   outgoingqueue: "inventoryqueue"
   config.numberofmessagestoconsume: 1

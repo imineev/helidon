@@ -1,18 +1,16 @@
 package io.helidon.messaging.jms;
 
-import io.helidon.config.Config;
+import io.helidon.messaging.Channels;
+import io.helidon.messaging.OutgoingMessagingService;
+import io.helidon.messaging.ProcessingMessagingService;
 import oracle.jdbc.datasource.OracleDataSource;
 import oracle.jms.AQjmsQueueConnectionFactory;
-import org.eclipse.microprofile.reactive.messaging.Message;
+import oracle.jms.AQjmsSession;
 import org.eclipse.microprofile.reactive.messaging.spi.ConnectorFactory;
-import org.eclipse.microprofile.reactive.streams.operators.SubscriberBuilder;
 
 import javax.jms.*;
 import java.io.Closeable;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 public class JMSProducer<K, V> implements Closeable {
@@ -23,24 +21,35 @@ public class JMSProducer<K, V> implements Closeable {
     private String url;
     private String user;
     private String password;
+    private String queueName;
+    private String channelName;
 
     public JMSProducer(org.eclipse.microprofile.config.Config config) {
         for (String propertyName : config.getPropertyNames()) {
             if (propertyName.startsWith(ConnectorFactory.OUTGOING_PREFIX)) {
                 String striped = propertyName.substring(ConnectorFactory.OUTGOING_PREFIX.length());
-                String channelName = striped.substring(0, striped.indexOf("."));
+                channelName = striped.substring(0, striped.indexOf("."));
                 String channelPropertyName = striped.substring(channelName.length() + 1);
-                if (channelPropertyName.equals("url")) url = config.getValue(propertyName, String.class);
-                else if (channelPropertyName.equals("user")) user = config.getValue(propertyName, String.class);
-                else if (channelPropertyName.equals("password")) password = config.getValue(propertyName, String.class);
-
+                switch (channelPropertyName) {
+                    case "url":
+                        url = config.getValue(propertyName, String.class);
+                        break;
+                    case "user":
+                        user = config.getValue(propertyName, String.class);
+                        break;
+                    case "password":
+                        password = config.getValue(propertyName, String.class);
+                        break;
+                    case "queue":
+                        queueName = config.getValue(propertyName, String.class);
+                        break;
+                }
             }
         }
         createConnectionFactory(); // todo move this out
     }
 
     private void createConnectionFactory() {
-
         try {
             OracleDataSource oracleDataSource = new oracle.jdbc.pool.OracleDataSource();
             oracleDataSource.setURL(url);
@@ -48,8 +57,6 @@ public class JMSProducer<K, V> implements Closeable {
             oracleDataSource.setPassword(password);
             queueConnectionFactory = new AQjmsQueueConnectionFactory();
             ((AQjmsQueueConnectionFactory) queueConnectionFactory).setDatasource(oracleDataSource);
-            System.out.println("JMSProducer.createConnectionFactory queueConnectionFactory:" + queueConnectionFactory +
-                    " url:" + url);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -58,43 +65,51 @@ public class JMSProducer<K, V> implements Closeable {
 
     @Override
     public void close() {
-        //close JMS session
     }
 
     public JMSSubscriberBuilder<K, V> createSubscriberBuilder(V executorService) {
-//        return new SimpleSubscriberBuilder;
-
-//        this.externalExecutorService = executorService;
-        System.out.println("KafkaProducer.createSubscriberBuilder");
-        //todo this is incorrect/incomplete, would be sent via SubscriberBuilder/CompletionSubscriber using OutgoingMessagingService etc
-        sendMessage(null, "demoqueue", "testmessage");
-        return new JMSSubscriberBuilder<>(); //todo...
-
+        sendMessage();
+        return new JMSSubscriberBuilder<>();
     }
 
     // todo existingsession for incomingoutgoing processor
-    public String sendMessage(Object existingsession, String queueName, String messageTxt)  {
+    private void sendMessage() {
         QueueConnection connection = null;
         javax.jms.Queue queue;
-        QueueSession session =null;
-        javax.jms.Message msg;
+        ProcessingMessagingService processingMessagingService =
+                Channels.getInstance().getProcessingMessagingService(channelName);
+        Channels.ProcessingMessagingServiceHolder processingMessagingServiceHolder =
+                Channels.getInstance().getProcessingMessagingServiceHolder(channelName);
+        OutgoingMessagingService outgoingMessagingService =
+                Channels.getInstance().getOutgoingMessagingService(channelName);
+        QueueSession session = null;
         try {
-            if (existingsession == null) {
-                System.out.println("JMSMessagingChannel.sendMessage existingsession == null");
+            org.eclipse.microprofile.reactive.messaging.Message message;
+            if (processingMessagingService != null) {
+                session = (QueueSession) processingMessagingServiceHolder.getSession();  //todo topic support
+                if (session == null) { //todo currently session should not be null but that is because we assume/require same session in processor case
+                    connection = queueConnectionFactory.createQueueConnection();
+                    session = connection.createQueueSession(true, Session.CLIENT_ACKNOWLEDGE);
+                } else {
+                   //processor
+                }
+                message = processingMessagingService.onIncoming(
+                        processingMessagingServiceHolder.getMessage(),
+                        processingMessagingServiceHolder.getConnection(), processingMessagingServiceHolder.getSession());
+            } else if (outgoingMessagingService != null) {
                 connection = queueConnectionFactory.createQueueConnection();
                 session = connection.createQueueSession(true, Session.CLIENT_ACKNOWLEDGE);
-            } else {
-                System.out.println("JMSMessagingChannel.sendMessage existingsession:" + existingsession);
-                session = (QueueSession)existingsession;
-            }
+                message = outgoingMessagingService.onOutgoing(((AQjmsSession) session).getDBConnection() , session);
+            } else
+                throw new Exception("no OutgoingMessagingService or ProcessingMessagingService found for channelName:" + channelName);
             queue = session.createQueue(queueName);
-            System.out.println("--->channel before send queue:" + queue);
-            session.createSender(queue).send(session.createTextMessage(messageTxt));
+            System.out.println("JMSProducer channel before send queueName:" + queue);
+            Message unwrappedJMSMessage = (Message) message.unwrap(Message.class);
+            session.createSender(queue).send(unwrappedJMSMessage);
             session.commit();
-            System.out.println("sendMessage committed messageTxt:" + messageTxt + " on queue:" + queue);
+            System.out.println("--->JMSProducer sendMessage committed messageTxt:" + unwrappedJMSMessage + " on queueName:" + queue);
             session.close();
-            if(connection !=null) connection.close(); //todo should be keeping or passing the conn in to do close
-            return "test"; // this is null ... queue.toString();
+            if (connection != null) connection.close(); //todo should be keeping or passing the conn in to do close
         } catch (Exception e) {
             System.out.println("sendMessage failed " +
                     "(will attempt rollback if session is not null):" + e + " session:" + session);
@@ -107,7 +122,6 @@ public class JMSProducer<K, V> implements Closeable {
                     e1.printStackTrace();
                 }
             }
-            return null;
         }
     }
 }

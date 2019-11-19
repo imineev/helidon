@@ -17,6 +17,7 @@
 package io.helidon.examples.messaging.jms;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
@@ -24,18 +25,25 @@ import java.util.concurrent.CompletionStage;
 import io.helidon.messaging.IncomingMessagingService;
 import io.helidon.messaging.MessagingClient;
 import io.helidon.messaging.OutgoingMessagingService;
+import io.helidon.messaging.ProcessingMessagingService;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.eclipse.microprofile.reactive.messaging.Message;
 import org.eclipse.microprofile.reactive.messaging.spi.ConnectorFactory;
 
+import javax.jms.JMSException;
 import javax.jms.Session;
+import javax.jms.TextMessage;
 
 
 public class MessagingService {
 
-    String incomingChannelName = "my-incomingchannel";
-    String outgoingChannelName = "my-outgoingchannel";
+    String incomingqueue = System.getProperty("incomingqueue");
+    String outgoingqueue = System.getProperty("outgoingqueue");
+    String incomingChannelName = incomingqueue + "-channel";
+String outgoingChannelName =  outgoingqueue + "-channel";
+//    String incomingChannelName = "processor" + "-channel"; // must have same channel name  for processor/incomingoutgoing
+//    String outgoingChannelName = "processor" + "-channel"; // must have same channel name  for processor/incomingoutgoing
 
     public static void main(String args[]) throws Exception {
         new MessagingService().test();
@@ -48,46 +56,89 @@ public class MessagingService {
         String testtype = System.getProperty("testtype");
         if (testtype.equals("incoming")) doIncoming(messagingClient);
         if (testtype.equals("outgoing")) doOutgoing(messagingClient);
-
+        if (testtype.equals("incomingoutgoing")) doIncomingOutgoing(messagingClient);
     }
 
-    private void doOutgoing(MessagingClient messagingClient) throws Exception{
-        OutgoingMessagingService outgoingMessagingService = new OutgoingMessagingService(){
+    private void doIncoming(MessagingClient messagingClient) throws Exception {
+        IncomingMessagingService incomingMessagingService =
+                (message, connection, session) -> System.out.println("MessagingService.onIncoming" +
+                        " connection:" + connection + "Session:" + session);
+        messagingClient.incoming(incomingMessagingService, incomingChannelName, null, true);
+        System.out.println("MessagingService.doIncoming sleep 2 minutes to receive messages...");
+        Thread.sleep(120 * 1000);
+    }
+
+    private void doOutgoing(MessagingClient messagingClient) throws Exception {
+        OutgoingMessagingService outgoingMessagingService = new OutgoingMessagingService() {
             @Override
-            public void onOngoing(Message message, Connection connection, Session session) {
-                System.out.println("MessagingService.onOngoing test connection:"+connection +
+            public Message onOutgoing(Connection connection, Session session) throws JMSException {
+                System.out.println("MessagingService.onOutgoing test connection:" + connection +
                         "Session:" + session);
+                String messageTxt = "outgoinginventorytestmessage";
+                TextMessage outgoinginventorytestmessage = session.createTextMessage(messageTxt);
+                return new Message(){
+                    @Override
+                    public Object getPayload() {
+                        return messageTxt;
+                    }
+
+                    @Override
+                    public CompletionStage<Void> ack() {
+                        return null;
+                    }
+
+                    @Override
+                    public Object unwrap(Class unwrapType) {
+                        return outgoinginventorytestmessage;
+                    }
+                };
             }
         };
-        messagingClient.outgoing(outgoingMessagingService, outgoingChannelName, new Message(){
-            @Override
-            public Object getPayload() {
-                return "testoutgoingJMSmessage";
-            }
-
-            @Override
-            public CompletionStage<Void> ack() {
-                return null;
-            }
-
-            @Override
-            public Object unwrap(Class unwrapType) {
-                return this;
-            }
-        }, true);
+        messagingClient.outgoing(outgoingMessagingService, outgoingChannelName, true);
         System.out.println("MessagingService.doOutgoing sleep 1 second so message has time to send...");
         Thread.sleep(1 * 1000);
     }
 
-    private void doIncoming(MessagingClient messagingClient) throws Exception {
-        IncomingMessagingService incomingMessagingService = new IncomingMessagingService(){
-            @Override
-            public void onIncoming(Message message, Connection connection, Session session) {
-                System.out.println("MessagingService.onIncoming test connection:"+connection +
-                        "Session:" + session);
+    private void doIncomingOutgoing(MessagingClient messagingClient) throws Exception {
+        ProcessingMessagingService processingMessagingService = (message, connection, session) -> {
+            System.out.println("-------------->MessagingService.doIncomingOutgoing connection:" + connection +
+                    "Session:" + session + " do db work...");
+            final int inventorycount;
+            ResultSet resultSet = connection.createStatement().executeQuery(
+                    "select inventorycount from inventory  where inventoryid = 'inventoryitem1'");
+            if (resultSet.next()) {
+                inventorycount = resultSet.getInt("inventorycount");
+                System.out.println("MessagingService.doIncomingOutgoing inventorycount:" + inventorycount);
+                //todo reduce inventory as appropriate
+            } else inventorycount = 0;
+            try {
+                String text = inventorycount > 0 ? "inventoryexists" : "inventorydoesnotexist";
+                TextMessage textMessage = session.createTextMessage(text);
+                textMessage.setStringProperty("action", text);
+                textMessage.setIntProperty("orderid", 66);
+                return new Message() {
+                    @Override
+                    public Object getPayload() {
+                        return text;
+                    }
+
+                    @Override
+                    public CompletionStage<Void> ack() {
+                        return null;
+                    }
+
+                    @Override
+                    public Object unwrap(Class unwrapType) {
+                        return textMessage;
+                    }
+                };
+            } catch (JMSException e) {
+                e.printStackTrace();
+                return null; //todo
             }
         };
-        messagingClient.incoming(incomingMessagingService, incomingChannelName, null, true);
+        messagingClient.incomingoutgoing(
+                processingMessagingService, incomingChannelName, outgoingChannelName, null,  true);
         System.out.println("MessagingService.doIncoming sleep 2 minutes to receive messages...");
         Thread.sleep(120 * 1000);
     }
@@ -95,9 +146,10 @@ public class MessagingService {
     private Config createConfig() {
         return new Config() {
             HashMap<String, String> values = new HashMap();
+
             private void createValues() {
 
-                String connectorName = "acme.aq";
+                String connectorName = "test.aq";
                 // @Connector("acme.aq")
                 // Helidon SE (not MP standard) equivalent config attribute "type"
                 // mp.messaging.connector.acme.kafka.classname=io.helidon.messaging.kafka.connector.JMSConnector
@@ -110,13 +162,16 @@ public class MessagingService {
                         connectorName);
                 // mp.messaging.incoming.my-channel.url=someurl
                 values.put(ConnectorFactory.INCOMING_PREFIX + incomingChannelName + "." + "url",
-                        "xxxxxx");
+                        "xxxxx");
                 // mp.messaging.incoming.my-channel.user=someuser
                 values.put(ConnectorFactory.INCOMING_PREFIX + incomingChannelName + "." + "user",
-                        "xxxxxx");
+                        "xxxxx");
                 // mp.messaging.incoming.my-channel.password=somepassword
                 values.put(ConnectorFactory.INCOMING_PREFIX + incomingChannelName + "." + "password",
-                        "xxxxxx");
+                        "xxxxx");
+                // mp.messaging.incoming.my-channel.queue=somepassword
+                values.put(ConnectorFactory.INCOMING_PREFIX + incomingChannelName + "." + "queue",
+                        incomingqueue);
 
 
                 // mp.messaging.incoming.my-channel.connector=acme.aq
@@ -131,6 +186,9 @@ public class MessagingService {
                 // mp.messaging.outgoing.my-channel.password=somepassword
                 values.put(ConnectorFactory.OUTGOING_PREFIX + outgoingChannelName + "." + "password",
                         "xxxxxx");
+                // mp.messaging.outgoing.my-channel.queue=somepassword
+                values.put(ConnectorFactory.OUTGOING_PREFIX + outgoingChannelName + "." + "queue",
+                        outgoingqueue);
             }
 
             @Override
