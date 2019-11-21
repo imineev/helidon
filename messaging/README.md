@@ -37,7 +37,8 @@ public class MessagingClient {
 
     /**
      * Sets up listener for incoming messages on specified channel.
-     * @param incomingMessagingService IncomingMessagingService implementation provided is executed when message is received.
+     * @param incomingMessagingService IncomingMessagingService implementation provided is executed when message is 
+     *                                                          received.
      * @param channelname Name of channel to listen on.
      * @param acknowledgement org.eclipse.microprofile.reactive.messaging.Acknowledgement
      */
@@ -100,11 +101,11 @@ Connectors (`IncomingConnectorFactory` and `OutgoingConnectorFactory` implementa
 
 Our plan is to provide a Helidon Messaging API as very thin layers over several existing messaging APIs 
 which are not reactive or their API is unnecessarily complex or does not match Helidon style of API. 
-The configuration will be portable with the MicroProfile Reactive Messaging and the API will follow a similar convention
+The configuration will be portable with MicroProfile Reactive Messaging and the API will follow a similar convention
 to the annotations in MP Reactive Messaging with a few enhancements.
 - Kafka 
 - JMS (specifically AQ)
-- others (Oracle Streaming Service, perhaps debezium, and those supported by smallrye listed here: https://smallrye.io/smallrye-reactive-messaging/)
+- others (Oracle Streaming Service, perhaps debezium, and those supported by smallrye 
 
 ## Configuration
 
@@ -116,10 +117,8 @@ Both MP and SE configuration will be supported and will follow the MicroProfile 
                 mp.messaging.connector.aqjms.classname=io.helidon.messaging.jms.connector.JMSConnector
 ### example for incoming and outgoing channels
                 mp.messaging.incoming.kafkafoochannelname.connector=kafka
-                mp.messaging.incoming.kafkafoochannelname.url=jdbc:oracle:thin:@//127.0.0.1:1521/testpdb.oraclevcn.com
-                mp.messaging.incoming.kafkafoochannelname.user=scott
-                mp.messaging.incoming.kafkafoochannelname.password=tiger
-                mp.messaging.incoming.kafkafoochannelname.queue=fooqueue
+                mp.messaging.incoming.kafkafoochannelname.bootstrap.servers=localhost:9092
+                mp.messaging.incoming.kafkafoochannelname.topic=footopic
                 mp.messaging.incoming.kafkafoochannelname.selector="foomessageproperty = barmessagepropertyvalue'"
                 mp.messaging.outgoing.aqjmsfoochannelname.connector=aqjms
                 mp.messaging.outgoing.aqjmsfoochannelname.url=jdbc:oracle:thin:@//127.0.0.1:1521/testpdb.oraclevcn.com
@@ -193,10 +192,18 @@ messagingClient.incomingoutgoing( (message, connection, session) -> {
             connection.createStatement().execute("some sql with foomessagepropertyvalue");
             return JMSMessage(session, foomessageproperty);
         }, "someincomingchannelname", "someoutgoingchannelname", Acknowledgment.Strategy.NONE);
+//todo Kafka incoming + Oracle Streaming Service outgoing and vice-versa
 ```
 ## Open questions
 
 Use opentracing contrib that exist for Kafka and JMS? 
 
 Proceed to implement MicroProfile Reactive Messaging in MP? 
-Currently we plan to wait and see. One advantage of the above approach/implementation, once complete, is that providing the MP feature would not take much effort if it's deemed worth it. 
+Currently we plan to wait and see. One advantage of the above approach/implementation, once complete, 
+is that providing the MP feature would not take much effort if it's deemed worth it. 
+
+Todo...
+ - Finish implementation as far as MP reactive, dynamic types, ack stratgies, reactive lib, ...
+ - Allow outgoing JMS optional/type convenience to return payload for message rather than require creation from session.
+ - Tracing, Metrics, Health
+ - Testing
