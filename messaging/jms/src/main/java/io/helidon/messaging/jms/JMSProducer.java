@@ -93,7 +93,7 @@ public class JMSProducer<K, V> implements Closeable {
                 } else {
                    //processor
                 }
-                message = processingMessagingService.onIncoming(
+                message = processingMessagingService.onProcessing(
                         processingMessagingServiceHolder.getMessage(),
                         processingMessagingServiceHolder.getConnection(), processingMessagingServiceHolder.getSession());
             } else if (outgoingMessagingService != null) {

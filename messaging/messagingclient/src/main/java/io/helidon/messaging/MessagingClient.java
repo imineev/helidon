@@ -106,6 +106,12 @@ public class MessagingClient {
         incoming(incomingMessagingService, channelname, null, false);
     }
 
+    /**
+     * Sets up listener for incoming messages on specified channel.
+     * @param incomingMessagingService IncomingMessagingService implementation provided is executed when message is received.
+     * @param channelname Name of channel to listen on.
+     * @param acknowledgement org.eclipse.microprofile.reactive.messaging.Acknowledgement
+     */
     public void incoming(IncomingMessagingService incomingMessagingService, String channelname,
                          Acknowledgment.Strategy acknowledgement, boolean isAQ) {
         isIncoming = true;
@@ -121,20 +127,33 @@ public class MessagingClient {
         outgoing(outgoingMessagingService, channelname, false);
     }
 
+    /**
+     * Sends message on specified channel.
+     * @param outgoingMessagingService OutgoingMessagingService implementation provided is executed before message is sent.
+     * @param channelname Name of channel to send on.
+     */
     public void outgoing(OutgoingMessagingService outgoingMessagingService, String channelname,
                          boolean isAQ) {
         channels.addOutgoingMessagingService(channelname, outgoingMessagingService);
         new Outgoing(channelname, config, isAQ).outgoing();
     }
 
-    public void incomingoutgoing(ProcessingMessagingService processingMessagingService, String incomgingchannelname,
+    /**
+     * Sets up listener for incoming messages on specified channel and in reaction sends message on specified channel.
+     * @param processingMessagingService ProcessingMessagingService implementation provided is executed when
+     *                                   when message is received and before message is sent.
+     * @param incomingchannelname Name of channel to listen on.
+     * @param outgoingchannelname Name of channel to send on.
+     * @param acknowledgement org.eclipse.microprofile.reactive.messaging.Acknowledgement
+     */
+    public void incomingoutgoing(ProcessingMessagingService processingMessagingService, String incomingchannelname,
                                  String outgoingchannelname, Acknowledgment.Strategy acknowledgement, boolean isAQ) {
-        IncomingSubscriber incomingSubscriber = new IncomingSubscriber(processingMessagingService, incomgingchannelname);
-        IncomingConnectorFactory incomingConnectorFactory = channels.getIncomingConnectorFactory(incomgingchannelname);
+        IncomingSubscriber incomingSubscriber = new IncomingSubscriber(processingMessagingService, incomingchannelname);
+        IncomingConnectorFactory incomingConnectorFactory = channels.getIncomingConnectorFactory(incomingchannelname);
         incomingSubscriber.addIncomingConnectionFactory(incomingConnectorFactory);
         if (isAQ) incomingSubscriber.setAQ(true); //todo temp hack
         incomingSubscriber.subscribe(
-                new ChannelSpecificConfig(config, incomgingchannelname, ConnectorFactory.INCOMING_PREFIX),
+                new ChannelSpecificConfig(config, incomingchannelname, ConnectorFactory.INCOMING_PREFIX),
                 new Outgoing(outgoingchannelname, config, isAQ));
     }
 

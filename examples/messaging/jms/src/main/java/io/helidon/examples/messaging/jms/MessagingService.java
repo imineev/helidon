@@ -61,7 +61,7 @@ String outgoingChannelName =  outgoingqueue + "-channel";
 
     private void doIncoming(MessagingClient messagingClient) throws Exception {
         IncomingMessagingService incomingMessagingService =
-                (message, connection, session) -> System.out.println("MessagingService.onIncoming" +
+                (message, connection, session) -> System.out.println("MessagingService.onProcessing" +
                         " connection:" + connection + "Session:" + session);
         messagingClient.incoming(incomingMessagingService, incomingChannelName, null, true);
         System.out.println("MessagingService.doIncoming sleep 2 minutes to receive messages...");

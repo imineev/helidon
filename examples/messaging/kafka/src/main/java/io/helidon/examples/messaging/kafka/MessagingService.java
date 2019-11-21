@@ -83,7 +83,7 @@ public class MessagingService {
     private void doIncoming(MessagingClient messagingClient) throws Exception {
         IncomingMessagingService incomingMessagingService =
                 (message, connection, session) ->
-                        System.out.println("Kafka IncomingMessagingService.onIncoming " +
+                        System.out.println("Kafka IncomingMessagingService.onProcessing " +
                                 "message:" + message + " connection:" + connection + " session:" + session);
         messagingClient.incoming(incomingMessagingService, incomingChannelName);
         System.out.println("MessagingService.doIncoming sleep 2 minutes to receive messages...");
