@@ -111,11 +111,10 @@ to the annotations in MP Reactive Messaging with a few enhancements.
 Both MP and SE configuration will be supported and will follow the MicroProfile Reactive Messaging convention.
 "mp.messaging.connector.[connectorname].classname" will be used in place of the @Connector annotation.
 
-### Example
-# example for connector
+### example for connector
                 mp.messaging.connector.kafka.classname=io.helidon.messaging.kafka.connector.KafkaConnector
                 mp.messaging.connector.aqjms.classname=io.helidon.messaging.jms.connector.JMSConnector
-# example for incoming and outgoing channels
+### example for incoming and outgoing channels
                 mp.messaging.incoming.kafkafoochannelname.connector=kafka
                 mp.messaging.incoming.kafkafoochannelname.url=jdbc:oracle:thin:@//127.0.0.1:1521/testpdb.oraclevcn.com
                 mp.messaging.incoming.kafkafoochannelname.user=scott
