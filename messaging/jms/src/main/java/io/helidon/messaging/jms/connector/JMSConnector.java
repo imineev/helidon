@@ -19,15 +19,25 @@ package io.helidon.messaging.jms.connector;
 import io.helidon.common.configurable.ThreadPoolSupplier;
 import io.helidon.messaging.jms.JMSConsumer;
 import io.helidon.messaging.jms.JMSProducer;
+import io.helidon.microprofile.config.MpConfig;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.reactive.messaging.Message;
 import org.eclipse.microprofile.reactive.messaging.spi.IncomingConnectorFactory;
 import org.eclipse.microprofile.reactive.messaging.spi.OutgoingConnectorFactory;
+import org.eclipse.microprofile.reactive.streams.operators.CompletionRunner;
+import org.eclipse.microprofile.reactive.streams.operators.ProcessorBuilder;
 import org.eclipse.microprofile.reactive.streams.operators.PublisherBuilder;
 import org.eclipse.microprofile.reactive.streams.operators.SubscriberBuilder;
+import org.eclipse.microprofile.reactive.streams.operators.spi.ReactiveStreamsEngine;
+import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.*;
+import java.util.stream.Collector;
 
 
 public class JMSConnector implements IncomingConnectorFactory, OutgoingConnectorFactory {
@@ -49,8 +59,8 @@ public class JMSConnector implements IncomingConnectorFactory, OutgoingConnector
     @Override
     public PublisherBuilder<? extends Message<?>> getPublisherBuilder(Config config) {
         JMSConsumer<Object, Object> JMSConsumer = new JMSConsumer<>(config);
-        consumers.add(JMSConsumer);
         return JMSConsumer.createPublisherBuilder(ThreadPoolSupplier.create().get());
+//        return JMSConsumer.createPublisherBuilder(getThreadPoolSupplier(((MpConfig) config).helidonConfig()).get());
     }
 
     @Override
@@ -58,6 +68,17 @@ public class JMSConnector implements IncomingConnectorFactory, OutgoingConnector
         JMSProducer<Object, Object> JMSProducer =  new JMSProducer<>(config);
         producers.add(JMSProducer);
         return JMSProducer.createSubscriberBuilder(ThreadPoolSupplier.create().get());
+//        return JMSProducer.createSubscriberBuilder(getThreadPoolSupplier(((MpConfig) config).helidonConfig()));
+    }
+
+    private ThreadPoolSupplier getThreadPoolSupplier(io.helidon.config.Config config) {
+        synchronized (this) {
+            if (this.threadPoolSupplier != null) {
+                return this.threadPoolSupplier;
+            }
+            this.threadPoolSupplier = ThreadPoolSupplier.create(config.get("executor-service"));
+            return threadPoolSupplier;
+        }
     }
 
 }

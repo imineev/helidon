@@ -41,7 +41,6 @@ public class IncomingSubscriber implements Subscriber<Message<?>> {
 
     @Override
     public void onNext(Message<?> message) {
-        System.out.println("IncomingSubscriber.onNext message:" + message);
         try {
             if (processingMessagingService != null) {
                 MessageWithConnectionAndSession messageWithConnectionAndSession =
@@ -71,19 +70,17 @@ public class IncomingSubscriber implements Subscriber<Message<?>> {
 
     @Override
     public void onError(Throwable t) {
-        System.out.println("IncomingSubscriber.onError:" + t);
         //todo
     }
 
     @Override
     public void onSubscribe(Subscription subscription) {
-        System.out.println("IncomingSubscriber.onSubscribe subscription:" + subscription);
-        subscription.request(1);
+        subscription.request(1); //todo actual receive would occur as result of this call...
     }
 
     @Override
     public void onComplete() {
-        System.out.println("IncomingSubscriber.onComplete");
+
     }
 
     void setAQ(boolean b) {

@@ -7,9 +7,11 @@ import oracle.jdbc.datasource.OracleDataSource;
 import oracle.jms.AQjmsQueueConnectionFactory;
 import oracle.jms.AQjmsSession;
 import org.eclipse.microprofile.reactive.messaging.spi.ConnectorFactory;
+import org.eclipse.microprofile.reactive.streams.operators.PublisherBuilder;
 
 import javax.jms.*;
 import java.io.Closeable;
+import java.util.Enumeration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
@@ -58,8 +60,7 @@ public class JMSConsumer<K, V> implements Closeable {
         }
     }
 
-
-    public JMSPublisherBuilder<K, V> createPublisherBuilder(ExecutorService executorService) {
+    public JMSPublisherBuilder<K,V> createPublisherBuilder(ExecutorService executorService) {
         this.externalExecutorService = executorService;
         return new JMSPublisherBuilder<>(subscriber -> {
             externalExecutorService.submit(() -> {
@@ -67,26 +68,33 @@ public class JMSConsumer<K, V> implements Closeable {
                     while (true) { //todo config for number of msg/requests made
                         boolean isCloseSession = MessagingClient.isIncoming; //todo false for processor true for incoming
                         QueueConnection connection = null;
-                        javax.jms.Queue queue;
+                        Queue queue;
                         QueueSession session = null;
-                        javax.jms.Message msg;
+                        Message msg;
                         try {
                             connection = queueConnectionFactory.createQueueConnection();
                             session = connection.createQueueSession(true, Session.CLIENT_ACKNOWLEDGE);
                             queue = session.createQueue(queueName);
                             java.sql.Connection dbConnection = ((AQjmsSession) session).getDBConnection();
-                            System.out.println("JMSConsumer selector:" + selector);
                             MessageConsumer consumer = selector == null?
                                     session.createConsumer(queue):
                                     session.createConsumer(queue, selector);
 //                            MessageConsumer consumer = session.createReceiver(queue); // for msg enqueued by Non-JMS (PL/SQL client)
                             connection.start();
-                            System.out.println("JMSConsumer before receive/consume queue:" + queue);
+                            System.out.println("JMSConsumer queue:" + queueName + " before receive...");
                             msg = consumer.receive();
-                            System.out.println("--->JMSConsumer message received:" + msg);
+                            Enumeration<String> e = (Enumeration<String>) msg.getPropertyNames();
+                            String msgPropertyDebugString = "";
+                            while (e.hasMoreElements()) {
+                                String name = e.nextElement();
+                                msgPropertyDebugString += name + "=" + msg.getStringProperty(name) + (e.hasMoreElements()?" , ":"");
+                            }
+                            System.out.println("JMSConsumer message received:" + msg +
+                                    " on queueName:" + queue + " properties:" + msgPropertyDebugString);
                             MessageWithConnectionAndSession<K,V> messageWithConnectionAndSession =
-                                    new MessageWithConnectionAndSession<>
-                                            (channelName, msg, dbConnection, session, null, null);
+                                    new MessageWithConnectionAndSession
+                                            (channelName, new JMSMessage(msg), new JDBCConnection(dbConnection),
+                                                    new JMSSession(session), null, null);
                             subscriber.onNext(messageWithConnectionAndSession);
                             if (isCloseSession) {
                                 session.commit();
@@ -130,7 +138,4 @@ public class JMSConsumer<K, V> implements Closeable {
     public void close() {
         this.closed.set(true);
     }
-
-
-
 }

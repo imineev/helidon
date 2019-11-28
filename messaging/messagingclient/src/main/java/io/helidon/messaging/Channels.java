@@ -4,8 +4,6 @@ import org.eclipse.microprofile.reactive.messaging.Message;
 import org.eclipse.microprofile.reactive.messaging.spi.IncomingConnectorFactory;
 import org.eclipse.microprofile.reactive.messaging.spi.OutgoingConnectorFactory;
 
-import javax.jms.Session;
-import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
 

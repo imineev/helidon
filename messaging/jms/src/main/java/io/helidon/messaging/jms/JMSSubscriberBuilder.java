@@ -19,7 +19,7 @@ public class JMSSubscriberBuilder<K, V> implements SubscriberBuilder {
 
             @Override
             public void onSubscribe(Subscription subscription) {
-                System.out.println("JMSSubscriberBuilder.onSubscribe");
+//                System.out.println("JMSSubscriberBuilder.onSubscribe");
                 subscription.request(1);
             }
 

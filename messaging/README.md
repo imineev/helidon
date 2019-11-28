@@ -196,7 +196,7 @@ messagingClient.incomingoutgoing( (message, connection, session) -> {
 ```
 ## Open questions
 
-Use opentracing contrib that exist for Kafka and JMS? 
+Use opentracing-contrib/java-kafka-client and opentracing-contrib/jms? 
 
 Proceed to implement MicroProfile Reactive Messaging in MP? 
 Currently we plan to wait and see. One advantage of the above approach/implementation, once complete, 
@@ -207,3 +207,5 @@ Todo...
  - Allow outgoing JMS optional/type convenience to return payload for message rather than require creation from session.
  - Tracing, Metrics, Health
  - Testing
+
+https://github.com/quarkusio/quarkus/issues/2140

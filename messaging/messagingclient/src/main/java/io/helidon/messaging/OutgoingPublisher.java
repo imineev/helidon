@@ -1,12 +1,9 @@
 package io.helidon.messaging;
 
 import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.reactive.messaging.Message;
 import org.eclipse.microprofile.reactive.messaging.spi.OutgoingConnectorFactory;
 import org.reactivestreams.Subscription;
 
-import javax.jms.Session;
-import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,11 +34,11 @@ public class OutgoingPublisher implements Subscription {
 
     @Override
     public void request(long l) {
-        System.out.println("--------------->OutgoingPublisher.request l:" + l);
+        //todo actual send would occur as result of this call...
     }
 
     @Override
     public void cancel() {
-        System.out.println("--------------->OutgoingPublisher.cancel");
+
     }
 }

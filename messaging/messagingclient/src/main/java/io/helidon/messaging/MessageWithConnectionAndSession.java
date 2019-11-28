@@ -2,20 +2,20 @@ package io.helidon.messaging;
 
 import org.eclipse.microprofile.reactive.messaging.Message;
 
-import java.sql.Connection;
 import java.util.concurrent.CompletionStage;
 
-//todo this is AQ JMS specific
-public class MessageWithConnectionAndSession<K, V> implements Message<javax.jms.Message> {
+/**
+ * Created by JMSConsumer
+ */
+public class MessageWithConnectionAndSession<K, V> implements Message<Object> {
     String channelname;
-    javax.jms.Message payload;
+    Message payload;
     Connection connection;
-    javax.jms.Session session;
+    Session session;
 
     public MessageWithConnectionAndSession(String channelname,
-            javax.jms.Message payload, Connection connection, javax.jms.Session session,
-                          K key,
-            V value) {
+            Message payload, Connection connection, Session session, //todo it's not really the payload it's the message itself
+                          K key, V value) {
         this.channelname = channelname;
         this.payload = payload;
         this.connection = connection;
@@ -26,17 +26,20 @@ public class MessageWithConnectionAndSession<K, V> implements Message<javax.jms.
         return connection;
     }
 
-    public javax.jms.Session getSession() {
+    public Session getSession() {
         return session;
     }
 
     public String getChannelName() {
         return channelname; // todo current assumption/limitation is that outgoing is same channel as incoming
-        // "inventoryqueue-channel";
+    }
+
+    public Object getMessage(Class unwrapType) { //todo unlike session and connection, unwraps before returning, should be consistent
+        return payload.unwrap(unwrapType);
     }
 
     @Override
-    public javax.jms.Message getPayload() {
+    public Message getPayload() {
         return payload;
     }
 

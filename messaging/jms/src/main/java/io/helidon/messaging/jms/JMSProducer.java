@@ -10,6 +10,7 @@ import org.eclipse.microprofile.reactive.messaging.spi.ConnectorFactory;
 
 import javax.jms.*;
 import java.io.Closeable;
+import java.util.Enumeration;
 import java.util.concurrent.ExecutorService;
 import java.util.logging.Logger;
 
@@ -86,7 +87,7 @@ public class JMSProducer<K, V> implements Closeable {
         try {
             org.eclipse.microprofile.reactive.messaging.Message message;
             if (processingMessagingService != null) {
-                session = (QueueSession) processingMessagingServiceHolder.getSession();  //todo topic support
+                session = (QueueSession) processingMessagingServiceHolder.getSession().unwrap(QueueSession.class);  //todo topic support
                 if (session == null) { //todo currently session should not be null but that is because we assume/require same session in processor case
                     connection = queueConnectionFactory.createQueueConnection();
                     session = connection.createQueueSession(true, Session.CLIENT_ACKNOWLEDGE);
@@ -99,15 +100,22 @@ public class JMSProducer<K, V> implements Closeable {
             } else if (outgoingMessagingService != null) {
                 connection = queueConnectionFactory.createQueueConnection();
                 session = connection.createQueueSession(true, Session.CLIENT_ACKNOWLEDGE);
-                message = outgoingMessagingService.onOutgoing(((AQjmsSession) session).getDBConnection() , session);
+                message = outgoingMessagingService.onOutgoing(
+                        new JDBCConnection(((AQjmsSession) session).getDBConnection()), new JMSSession(session));
             } else
-                throw new Exception("no OutgoingMessagingService or ProcessingMessagingService found for channelName:" + channelName);
+                throw new Exception("No OutgoingMessagingService or ProcessingMessagingService found for channelName:" + channelName);
             queue = session.createQueue(queueName);
-            System.out.println("JMSProducer channel before send queueName:" + queue);
             Message unwrappedJMSMessage = (Message) message.unwrap(Message.class);
+            Enumeration<String> e = (Enumeration<String>) unwrappedJMSMessage.getPropertyNames();
+            String msgPropertyDebugString = "";
+            while (e.hasMoreElements()) {
+                String name = e.nextElement();
+                msgPropertyDebugString += name + "=" + unwrappedJMSMessage.getStringProperty(name) + (e.hasMoreElements()?" , ":"");
+            }
             session.createSender(queue).send(unwrappedJMSMessage);
             session.commit();
-            System.out.println("--->JMSProducer sendMessage committed messageTxt:" + unwrappedJMSMessage + " on queueName:" + queue);
+            System.out.println("JMSProducer sendMessage committed messageTxt:" +
+                    unwrappedJMSMessage + " on queueName:" + queue + " properties:" + msgPropertyDebugString);
             session.close();
             if (connection != null) connection.close(); //todo should be keeping or passing the conn in to do close
         } catch (Exception e) {

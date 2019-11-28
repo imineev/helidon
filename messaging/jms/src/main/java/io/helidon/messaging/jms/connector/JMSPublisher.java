@@ -32,7 +32,6 @@ public class JMSPublisher<K, V> implements Publisher<MessageWithConnectionAndSes
 
     @Override
     public void subscribe(Subscriber<? super MessageWithConnectionAndSession<K, V>> s) {
-        System.out.println("JMSPublisher.subscribe");
         publisher.accept(s);
     }
 
