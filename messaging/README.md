@@ -137,6 +137,20 @@ incoming.aqjmsfoochannelname:
     selector: "foomessageproperty = barmessagepropertyvalue'"
 ```
 
+```yaml
+messaging-weblogicjms:
+    type: jms
+    provider:
+      type: weblogic
+      endpoint: localhost:7001
+      username: weblogic
+    channels:
+      name: foochannel
+        
+    queue: fooqueue
+    selector: "foomessageproperty = barmessagepropertyvalue'"
+```
+
 This configuration file defines both connectivity and listeners.
 
 

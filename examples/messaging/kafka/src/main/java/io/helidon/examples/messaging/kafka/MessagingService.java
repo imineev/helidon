@@ -16,20 +16,16 @@
 
 package io.helidon.examples.messaging.kafka;
 
-import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Optional;
-import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 
-import io.helidon.messaging.IncomingMessagingService;
-import io.helidon.messaging.MessagingClient;
-import io.helidon.messaging.OutgoingMessagingService;
+import io.helidon.messaging.*;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.eclipse.microprofile.reactive.messaging.Message;
 import org.eclipse.microprofile.reactive.messaging.spi.ConnectorFactory;
 
-import javax.jms.Session;
 
 
 public class MessagingService {
@@ -39,11 +35,11 @@ public class MessagingService {
 
     public static void main(String args[]) throws Exception {
         new MessagingService().test();
+        Thread.sleep(120 * 1000);
     }
 
     private void test() throws Exception {
         org.eclipse.microprofile.config.Config mpConfig = createConfig();
-
         MessagingClient messagingClient = MessagingClient.build(mpConfig);
         String testtype = System.getProperty("testtype");
         if (testtype.equals("incoming")) doIncoming(messagingClient);
@@ -51,34 +47,17 @@ public class MessagingService {
 
     }
 
-    private void doOutgoing(MessagingClient messagingClient) throws Exception{
-        OutgoingMessagingService outgoingMessagingService = new OutgoingMessagingService(){
-            @Override
-            public Message onOutgoing(Connection connection, Session session) {
-                System.out.println("MessagingService.onOutgoing test" +
-                        "connection = [" + connection + "], session = [" + session + "]");
-                return null;
-            }
+    private void doOutgoing(MessagingClient messagingClient) throws Exception {
+        Function<Session, Message> outgoingMessagingService = (session) -> {
+            System.out.println("MessagingService.onOutgoing test" +
+                    " session:" + session + " session connection (if any):" + session.getConnection() +
+                    " session message:" + session.getMessage());
+            return Message.of("testmessage");
         };
-        messagingClient.outgoing(outgoingMessagingService, outgoingChannelName, new Message(){
-            @Override
-            public Object getPayload() {
-                return "test";
-            }
-
-            @Override
-            public CompletionStage<Void> ack() {
-                return null;
-            }
-
-            @Override
-            public Object unwrap(Class unwrapType) {
-                return this;
-            }
-        });
+        messagingClient.outgoing(outgoingChannelName, outgoingMessagingService);
         System.out.println("MessagingService.doOutgoing sleep 1 second so message has time to send...");
-        Thread.sleep(1 * 1000);
     }
+
 
     private void doIncoming(MessagingClient messagingClient) throws Exception {
         IncomingMessagingService incomingMessagingService =
@@ -87,7 +66,15 @@ public class MessagingService {
                                 "message:" + message + " connection:" + connection + " session:" + session);
         messagingClient.incoming(incomingMessagingService, incomingChannelName);
         System.out.println("MessagingService.doIncoming sleep 2 minutes to receive messages...");
-        Thread.sleep(120 * 1000);
+    }
+
+    private void doIncomingOutgoing(MessagingClient messagingClient) throws Exception {
+        IncomingMessagingService incomingMessagingService =
+                (message, connection, session) ->
+                        System.out.println("Kafka IncomingMessagingService.onProcessing " +
+                                "message:" + message + " connection:" + connection + " session:" + session);
+        messagingClient.incoming(incomingMessagingService, incomingChannelName);
+        System.out.println("MessagingService.doIncoming sleep 2 minutes to receive messages...");
     }
 
     private Config createConfig() {

@@ -33,7 +33,7 @@ public class IncomingSubscriber implements Subscriber<Message<?>> {
     public void subscribe(Config config, Outgoing outgoing) {
         this.outgoing = outgoing;
         incomingConnectorFactories
-                .get(0) //todo only supports one currently
+                .get(0) //todo only supports one at least currently
                 .getPublisherBuilder(config)
                 .buildRs()
                 .subscribe(this);

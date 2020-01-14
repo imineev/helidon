@@ -35,7 +35,9 @@
     <modules>
         <module>messagingclient</module>
         <module>kafka</module>
+        <module>aq</module>
         <module>jms</module>
         <module>oss</module>
+        <module>nats</module>
     </modules>
 </project>

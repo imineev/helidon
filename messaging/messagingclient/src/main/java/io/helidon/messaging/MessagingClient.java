@@ -17,6 +17,7 @@ package io.helidon.messaging;
 
 import java.lang.reflect.Constructor;
 import java.util.*;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 import org.eclipse.microprofile.reactive.messaging.Acknowledgment;
@@ -123,15 +124,25 @@ public class MessagingClient {
     }
 
 
-    public void outgoing(OutgoingMessagingService outgoingMessagingService, String channelname, Message message) {
-        outgoing(outgoingMessagingService, channelname, false);
-    }
-
     /**
      * Sends message on specified channel.
      * @param outgoingMessagingService OutgoingMessagingService implementation provided is executed before message is sent.
      * @param channelname Name of channel to send on.
      */
+    public void outgoing(OutgoingMessagingService outgoingMessagingService, String channelname) {
+        outgoing(outgoingMessagingService, channelname, false);
+    }
+
+//    public void outgoing(String channel, Message message) {
+//        call outgoing(String channel, Function<Session, Message> sender);
+//    }
+
+    public void outgoing(String channelname, Function<Session, Message> outgoingMessagingService) {
+        boolean isAQ = false; //todo this would of course be in config/builder
+        channels.addOutgoingMessagingFunction(channelname, outgoingMessagingService);
+        new Outgoing(channelname, config, isAQ).outgoing();
+    }
+
     public void outgoing(OutgoingMessagingService outgoingMessagingService, String channelname,
                          boolean isAQ) {
         channels.addOutgoingMessagingService(channelname, outgoingMessagingService);

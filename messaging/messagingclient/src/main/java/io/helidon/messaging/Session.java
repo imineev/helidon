@@ -4,6 +4,10 @@ public interface Session<T> {
 
     T getSession();
 
+    T getConnection();
+
+    T getMessage();
+
     default <C> C unwrap(Class<C> unwrapType) {
         if (unwrapType == null) {
             throw new IllegalArgumentException("The target class must not be `null`");

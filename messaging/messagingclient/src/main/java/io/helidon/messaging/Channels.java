@@ -6,6 +6,7 @@ import org.eclipse.microprofile.reactive.messaging.spi.OutgoingConnectorFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 public class Channels {
 
@@ -46,6 +47,16 @@ public class Channels {
 
 
 
+
+    Map<String, Function<Session, Message>> outgoingMessagingFunctionMap = new HashMap<>();
+
+    public void addOutgoingMessagingFunction(String channelname, Function<Session, Message> outgoingMessagingService) {
+        outgoingMessagingFunctionMap.put(channelname, outgoingMessagingService);
+    }
+
+    public Function<Session, Message> getOutgoingMessagingFunction(String channelname) {
+        return outgoingMessagingFunctionMap.get(channelname);
+    }
 
 
     public void addOutgoingMessagingService(String channelname, OutgoingMessagingService outgoingMessagingService) {

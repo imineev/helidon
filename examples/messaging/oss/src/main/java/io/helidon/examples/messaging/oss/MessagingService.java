@@ -22,10 +22,17 @@ import com.oracle.bmc.streaming.requests.PutMessagesRequest;
 
 
 public class MessagingService {
-    public static void main(String args[]) throws Exception {
+    public static void mainossapi(String args[]) throws Exception {
         AbstractAuthenticationDetailsProvider abstractAuthenticationDetailsProvider = null;
         PutMessagesRequest putMessagesRequest = null;
         StreamClient.builder().build(abstractAuthenticationDetailsProvider).putMessages(putMessagesRequest);
+    }
+
+
+    public static void main(String... args) throws Exception {
+        System.out.println("producer");
+        CompatibleProducer producer = new CompatibleProducer();
+        producer.produce();
     }
 
 }

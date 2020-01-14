@@ -17,10 +17,13 @@
 package io.helidon.messaging.kafka;
 
 import io.helidon.config.Config;
+import io.helidon.messaging.kafka.connector.KafkaMessage;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.LongSerializer;
@@ -29,6 +32,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.eclipse.microprofile.reactive.messaging.spi.ConnectorFactory;
 
 import java.io.Closeable;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -194,31 +198,34 @@ public class KafkaProducer<K, V> implements Closeable {
         //todo this is incorrect/incomplete, would be sent via SubscriberBuilder/CompletionSubscriber using OutgoingMessagingService etc
         ProducerRecord<K, V> kvProducerRecord = new ProducerRecord((String)properties.get("topic"), "test");
         producer.send(kvProducerRecord);
-        return new KafkaSubscriberBuilder(); //todo...
+        return new KafkaSubscriberBuilder();
+        /**
+        //todo...
 
-//        return new KafkaSubscriberBuilder<K, V>(subscriber -> {
-//            externalExecutorService.submit(subscriber -> {
-//                producer.send(null);
-//                consumer.subscribe(topicNameList, partitionsAssignedLatch);
-//                try {
-//                    while (!closed.get()) {
-//                        System.out.println("KafkaConsumer.createPublisherBuilder !closed.get()");
-//                        ConsumerRecords<K, V> consumerRecords = consumer.poll(Duration.ofSeconds(5));
-//                        consumerRecords.forEach(cr -> {
-//                            KafkaMessage<K, V> kafkaMessage = new KafkaMessage<>(cr);
-//                            subscriber.onNext(kafkaMessage);
-//                        });
-//                    }
-//                } catch (WakeupException ex) {
-//                    if (!closed.get()) {
-//                        throw ex;
-//                    }
-//                } finally {
-//                    LOGGER.info("Closing consumer" + consumerId);
-//                    consumer.close();
-//                }
-//            });
-//        });
+        return new KafkaSubscriberBuilder<K, V>(subscriber -> {
+            externalExecutorService.submit(subscriber -> {
+                producer.send(null);
+                consumer.subscribe(topicNameList, partitionsAssignedLatch);
+                try {
+                    while (!closed.get()) {
+                        System.out.println("KafkaConsumer.createPublisherBuilder !closed.get()");
+                        ConsumerRecords<K, V> consumerRecords = consumer.poll(Duration.ofSeconds(5));
+                        consumerRecords.forEach(cr -> {
+                            KafkaMessage<K, V> kafkaMessage = new KafkaMessage<>(cr);
+                            subscriber.onNext(kafkaMessage);
+                        });
+                    }
+                } catch (WakeupException ex) {
+                    if (!closed.get()) {
+                        throw ex;
+                    }
+                } finally {
+                    LOGGER.info("Closing consumer" + consumerId);
+                    consumer.close();
+                }
+            });
+        });
+         */
         /**
         return new KafkaSubscriberBuilder<K, V>(subscriber -> {
             externalExecutorService.submit(() -> {
